@@ -53,6 +53,7 @@ function shop(){
  let cat='Semua',q='';
  const cats=['Semua','Manis','Asin','Promo','Terlaris'];
  const drawCats=()=>{$('#cats').replaceChildren(...cats.map(c=>h('button',{class:'chip'+(c===cat?' on':''),onclick:()=>{cat=c;drawCats();drawMenu()}},c)))};
+ function drawPromo(){const box=$('#promoList');if(!box)return;box.replaceChildren();prods().filter(p=>price(p)<p.price).forEach(p=>box.append(h('div',{class:'pc'},h('b',{},p.name),h('span',{},rp(price(p)),' ',h('s',{},rp(p.price))),h('small',{},'Hemat '+rp(p.price-price(p))+' · s/d '+(p.promoEnd||'-')),h('button',{class:'btn gold sm',onclick:()=>{cart[p.id]=(cart[p.id]||0)+1;saveCart();toast(p.name+' masuk keranjang')}},'+ Keranjang'))))}
  function drawMenu(){const g=$('#grid');g.replaceChildren();
   const list=prods().filter(p=>p.name.toLowerCase().includes(q)&&(cat==='Semua'||(cat==='Promo'?price(p)<p.price:cat==='Terlaris'?p.best:cat==='Asin'?p.cat!=='Manis':p.cat===cat)));
   if(!list.length)g.append(h('p',{},'Menu tidak ditemukan. Coba kata kunci lain.'));
@@ -101,6 +102,6 @@ function shop(){
  $('#chatF').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);
   if(Repo.put('messages',{id:uid(),name:f.get('name').trim(),phone:f.get('phone').trim(),text:f.get('text').trim(),time:new Date().toISOString(),status:'Baru'})){e.target.reset();$('#chatOk').textContent='Pesan tersimpan (demo lokal).';$('#chatOk').hidden=false}};
  $('#chatWa').onclick=e=>{const f=new FormData($('#chatF'));e.target.href=waLink(S.wa,chatMsg(f))};
- $('#cartBar').onclick=()=>$('#cartBtn').click();drawCats();drawMenu();saveCart();
+ $('#cartBar').onclick=()=>$('#cartBtn').click();drawPromo();drawCats();drawMenu();saveCart();
  if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
