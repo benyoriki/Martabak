@@ -68,3 +68,7 @@ table.rk thead{display:none}table.rk,table.rk tbody,table.rk tfoot,table.rk tr,t
 table.rk td:first-child{white-space:nowrap}.tw{margin-top:6px}
 @media(max-width:900px){.sg{grid-template-columns:repeat(2,1fr)}.sg3{grid-template-columns:1fr}.insc{display:none}.hk{text-align:left}.wl h2{font-size:20px}.dt{width:100%}.bar h1{font-size:19px}}
 @media(max-width:820px){.insc{display:none!important}}
+/* v3 */
+.btn.inst:before{content:"⇩ "}
+#lf{box-shadow:0 24px 60px #000a,0 0 0 1px rgba(255,194,26,.3)}
+.lg span{line-height:1.1}.lg i{display:block;font-size:20px}

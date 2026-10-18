@@ -25,6 +25,7 @@ theme();
 function pwa(){let dp=null,card=null;const btns=()=>document.querySelectorAll('.inst'),st=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
  if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
  if(st){btns().forEach(b=>b.hidden=true);return}
+ btns().forEach(b=>b.hidden=false);
  const ua=navigator.userAgent,ios=/iPhone|iPad|iPod/.test(ua),and=/Android/.test(ua);
  const steps=ios?['Ketuk tombol Bagikan di Safari','Pilih "Tambah ke Layar Utama"','Ketuk Tambah']:and?['Ketuk menu ⋮ di Chrome','Pilih "Instal aplikasi" atau "Tambahkan ke layar utama"','Ketuk Instal']:['Buka di Chrome atau Edge','Klik ikon instal di ujung kanan bilah alamat','Klik Instal'];
  const hideCard=()=>{if(card){card.remove();card=null}};

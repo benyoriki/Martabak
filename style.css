@@ -96,3 +96,12 @@ dialog .btn,#loginD .btn{width:100%;margin:6px 0}dialog .row .btn{width:auto;fle
 .pwa img,.pl{border-radius:50%}.pwa div{flex:1;line-height:1.25}.pwa small{display:block;color:#d9c7b5}.pwx{background:0;border:0;color:#b9a898;font-size:18px;padding:4px}@keyframes up{from{transform:translateY(40px);opacity:0}}
 .pst{text-align:left;padding-left:22px}.pl{margin:0 auto 6px;display:block}
 @media(max-width:480px){.hero .btn.inst{display:inline-block}}
+/* v6 */
+.fab{display:flex;align-items:center;gap:8px;width:auto;height:56px;padding:0 20px 0 16px;border-radius:30px;background:linear-gradient(135deg,#25d366,#128c4a);box-shadow:0 8px 22px rgba(18,140,74,.5);font-weight:800;font-size:15px;color:#fff}
+.fab:before{content:"";position:absolute;right:4px;top:4px;width:12px;height:12px;border-radius:50%;background:#ffc21a;border:2px solid #fff}
+.fab:after{content:"";position:absolute;left:-4px;top:-4px;right:-4px;bottom:-4px;border-radius:34px;border:2px solid rgba(37,211,102,.6);animation:rg 2.2s ease-out infinite;pointer-events:none}
+@keyframes rg{from{transform:scale(.92);opacity:1}to{transform:scale(1.12);opacity:0}}
+@media(max-width:600px){.fab span{display:none}.fab{width:58px;height:58px;padding:0;justify-content:center;border-radius:50%}.fab:after{border-radius:50%}}
+.hero .hi{animation:fl 5s ease-in-out infinite alternate}@keyframes fl{to{transform:translateY(-6px)}}
+.fg{display:grid;grid-template-columns:1.4fr 1fr 1.2fr 1fr;gap:20px;text-align:left;max-width:1200px;margin:0 auto 20px}.fg img{margin:0 0 8px}.fg b{display:block;color:var(--tx);margin-bottom:6px}.fg a,.fg span{display:block;color:var(--mu);text-decoration:none;margin:3px 0}.fg a:hover{color:var(--y)}
+@media(max-width:700px){.fg{grid-template-columns:1fr 1fr}}
