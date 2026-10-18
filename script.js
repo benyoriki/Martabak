@@ -22,19 +22,20 @@ const price=p=>p.promo>0&&p.promo<p.price&&p.promoEnd>=today()?p.promo:p.price;
 const waLink=(num,m)=>`https://wa.me/${num}?text=${encodeURIComponent(m)}`;
 function theme(){const t=localStorage.getItem(K+'theme')||'dark';document.documentElement.dataset.theme=t;const b=$('#themeBtn');b&&b.addEventListener('click',()=>{const n=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=n;localStorage.setItem(K+'theme',n)})}
 theme();
-function pwa(){let dp=null,card=null;const btns=()=>document.querySelectorAll('.inst'),st=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+function pwa(){let dp=window.__dp||null,card=null;const btns=()=>document.querySelectorAll('.inst'),st=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
  if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
  if(st){btns().forEach(b=>b.hidden=true);return}
  btns().forEach(b=>b.hidden=false);
- const ua=navigator.userAgent,ios=/iPhone|iPad|iPod/.test(ua),and=/Android/.test(ua);
- const steps=ios?['Ketuk tombol Bagikan di Safari','Pilih "Tambah ke Layar Utama"','Ketuk Tambah']:and?['Ketuk menu ⋮ di Chrome','Pilih "Instal aplikasi" atau "Tambahkan ke layar utama"','Ketuk Instal']:['Buka di Chrome atau Edge','Klik ikon instal di ujung kanan bilah alamat','Klik Instal'];
+ const ua=navigator.userAgent,ios=/iPhone|iPad|iPod/.test(ua),and=/Android/.test(ua),inapp=/FBAN|FBAV|Instagram|Line\/|MicroMessenger|TikTok|; wv\)/.test(ua);
+ const steps=inapp?['Ketuk menu ⋮ di pojok layar','Pilih "Buka di Chrome" atau "Buka di browser"','Lalu ketuk Pasang Aplikasi lagi']:ios?['Ketuk tombol Bagikan di Safari','Pilih "Tambah ke Layar Utama"','Ketuk Tambah']:and?['Ketuk menu ⋮ di Chrome','Pilih "Instal aplikasi" atau "Tambahkan ke layar utama"','Ketuk Instal']:['Buka di Chrome atau Edge','Klik ikon instal di ujung kanan bilah alamat','Klik Instal'];
  const hideCard=()=>{if(card){card.remove();card=null}};
- const guide=()=>{let d=$('#pwaD');if(!d){d=h('dialog',{id:'pwaD'});document.body.append(d)}d.replaceChildren(h('button',{class:'x',onclick:()=>d.close(),'aria-label':'Tutup'},'✕'),h('img',{class:'pl',src:'logo.png',width:72,height:72,alt:''}),h('h3',{},'Pasang Aplikasi'),h('ol',{class:'pst'},steps.map(s=>h('li',{},s))),h('button',{class:'btn gold',onclick:()=>d.close()},'Mengerti'));d.showModal()};
- const go=async()=>{if(dp){dp.prompt();const r=await dp.userChoice;dp=null;if(r.outcome==='accepted')btns().forEach(b=>b.hidden=true);hideCard()}else guide()};
+ const guide=()=>{let d=$('#pwaD');if(!d){d=h('dialog',{id:'pwaD'});document.body.append(d)}d.replaceChildren(h('button',{class:'x',onclick:()=>d.close(),'aria-label':'Tutup'},'✕'),h('img',{class:'pl',src:'logo.png',width:72,height:72,alt:''}),h('h3',{},'Pasang Aplikasi'),h('ol',{class:'pst'},steps.map(s=>h('li',{},s))),h('p',{class:'info'},'Jika muncul "Tidak dapat membuka aplikasi" atau tombol tidak bereaksi: hapus ikon aplikasi lama dari layar utama, muat ulang halaman, lalu pasang lagi.'),h('button',{class:'btn gold',onclick:()=>d.close()},'Mengerti'));d.showModal()};
+ const go=async()=>{if(!dp){guide();return}try{dp.prompt();const r=await dp.userChoice;if(r.outcome==='accepted')btns().forEach(b=>b.hidden=true)}catch(e){guide()}dp=null;window.__dp=null;hideCard()};
  btns().forEach(b=>b.onclick=go);
- addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;if(+localStorage.getItem(K+'pwaNo')>Date.now())return;
-  setTimeout(()=>{if(card||!dp)return;const adm=document.body.dataset.page==='admin';card=h('div',{class:'pwa'},h('img',{src:'logo.png',width:56,height:56,alt:''}),h('div',{},h('b',{},adm?'Pasang Admin Mas Bejo':'Pasang Aplikasi Mas Bejo'),h('small',{},'Buka lebih cepat dari layar utama, tampil layar penuh.')),h('button',{class:'btn gold sm',onclick:go},'Pasang'),h('button',{class:'pwx',onclick:()=>{localStorage.setItem(K+'pwaNo',Date.now()+3*864e5);hideCard()},'aria-label':'Nanti'},'✕'));document.body.append(card)},3600)});
- addEventListener('appinstalled',()=>{btns().forEach(b=>b.hidden=true);hideCard()})}
+ const offer=()=>{if(card||!dp||+localStorage.getItem(K+'pwaNo')>Date.now())return;setTimeout(()=>{if(card||!dp)return;const adm=document.body.dataset.page==='admin';card=h('div',{class:'pwa'},h('img',{src:'logo.png',width:56,height:56,alt:''}),h('div',{},h('b',{},adm?'Pasang Admin Mas Bejo':'Pasang Aplikasi Mas Bejo'),h('small',{},'Buka lebih cepat dari layar utama, tampil layar penuh.')),h('button',{class:'btn gold sm',onclick:go},'Pasang'),h('button',{class:'pwx',onclick:()=>{localStorage.setItem(K+'pwaNo',Date.now()+3*864e5);hideCard()},'aria-label':'Nanti'},'✕'));document.body.append(card)},3600)};
+ addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;window.__dp=e;offer()});
+ addEventListener('appinstalled',()=>{btns().forEach(b=>b.hidden=true);hideCard()});
+ offer()}
 pwa();
 if(document.body.dataset.page==='shop')shop();
 function shop(){
@@ -90,6 +91,7 @@ function shop(){
   b.append(h('p',{},h('small',{},'Tombol WhatsApp hanya membuka chat berisi teks siap kirim. Tekan kirim di WhatsApp.')),nav(h('a',{class:'btn green',href:waLink(S.wa,msg(o)),target:'_blank',rel:'noopener'},'Kirim Pesanan ke WhatsApp'),h('button',{class:'chip',onclick:()=>{$('#cartD').close();go(1)}},'Selesai')))}
  $('#cartBtn').onclick=()=>{go(last&&!Object.keys(cart).length&&body.dataset.k?4:1);$('#cartD').showModal()};
  document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+ document.querySelectorAll('dialog').forEach(d=>d.addEventListener('click',e=>{const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()}));
  const enter=()=>{sessionStorage.setItem('mbAdmin','1');location.href='admin.html'};
  $('#loginBtn').onclick=()=>$('#loginD').showModal();$('#demoBtn').onclick=enter;
  $('#loginF').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);if(f.get('e').trim().toLowerCase()==='admin@masbejo.demo'&&f.get('p')==='admin123')enter();else alert('Email atau password salah. Coba tombol Akun Demo.')};

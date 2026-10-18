@@ -72,3 +72,6 @@ table.rk td:first-child{white-space:nowrap}.tw{margin-top:6px}
 .btn.inst:before{content:"⇩ "}
 #lf{box-shadow:0 24px 60px #000a,0 0 0 1px rgba(255,194,26,.3)}
 .lg span{line-height:1.1}.lg i{display:block;font-size:20px}
+/* v4 */
+#lf{position:relative}a.x{display:grid;place-items:center;color:var(--tx);text-decoration:none;font-size:16px}#lf small{display:block;margin-top:6px}
+.btn.chip{width:100%;text-align:center}.info{background:rgba(255,194,26,.12);border-radius:10px;padding:8px 12px;font-size:13px}.pst{text-align:left;padding-left:22px}
