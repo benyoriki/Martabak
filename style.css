@@ -81,3 +81,18 @@ body.hasCart .fab{bottom:84px}body{padding-bottom:84px}
 @media(max-width:820px){nav a{padding:10px 0;font-size:18px}nav.open{box-shadow:0 12px 24px #0006}}
 @media(max-width:600px){.how ol{grid-template-columns:1fr;gap:22px}}
 @media(min-width:1100px){.hero{padding-top:60px;padding-bottom:60px}.hero h1{font-size:92px}.grid{grid-template-columns:repeat(4,1fr)}}
+/* v4 */
+[hidden]{display:none!important}
+.card img{background:#2a1a10}.card{transition:transform .2s,border-color .2s}.card:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(255,150,0,.18)}
+.hero .hi{box-shadow:0 0 0 6px rgba(255,194,26,.15),0 22px 60px rgba(255,100,0,.28)}
+.feat div{transition:border-color .2s}.feat div:hover{border-color:var(--y)}
+.card .price{font-size:19px}.card b{font-size:16px}
+dialog .btn,#loginD .btn{width:100%;margin:6px 0}dialog .row .btn{width:auto;flex:1}
+#loginF label{margin-bottom:10px}
+/* v5 */
+.btn.inst{background:linear-gradient(180deg,#ffd54a,#ffb300);color:#2a1700}.btn.inst:before{content:"⇩ "}
+.inst{position:relative;overflow:hidden}.inst:after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.65),transparent);transform:skewX(-20deg);animation:sh 2.8s infinite;pointer-events:none}@keyframes sh{to{left:130%}}
+.pwa{position:fixed;left:12px;right:12px;bottom:12px;max-width:460px;margin:auto;z-index:70;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:linear-gradient(135deg,#2a1608,#120c08);border:1px solid #ffc21a;color:#fff;box-shadow:0 12px 40px #000a,0 0 0 3px rgba(255,194,26,.18);animation:up .5s ease-out}
+.pwa img,.pl{border-radius:50%}.pwa div{flex:1;line-height:1.25}.pwa small{display:block;color:#d9c7b5}.pwx{background:0;border:0;color:#b9a898;font-size:18px;padding:4px}@keyframes up{from{transform:translateY(40px);opacity:0}}
+.pst{text-align:left;padding-left:22px}.pl{margin:0 auto 6px;display:block}
+@media(max-width:480px){.hero .btn.inst{display:inline-block}}

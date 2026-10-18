@@ -16,12 +16,25 @@ const Repo={
  put(n,item){const l=this.get(n),i=l.findIndex(x=>x.id===item.id);i<0?l.push(item):l[i]=item;return this.save(n,l)},
  del(n,id){return this.save(n,this.get(n).filter(x=>x.id!==id))},
  reset(){Object.keys(localStorage).filter(k=>k.startsWith(K)&&k!==K+'theme').forEach(k=>localStorage.removeItem(k))}};
-const pimg=p=>p.img||({Manis:'manis.jpg',Asin:'asin.jpg'}[p.cat]||'hero.jpg');
+const pimg=p=>p.img||({P1:'manis.jpg',P2:'manis2.jpg',P3:'manis3.jpg',P4:'manis4.jpg',P5:'asin.jpg',P6:'asin2.jpg',P7:'asin3.jpg',P8:'hero.jpg'}[p.id]||({Manis:'manis.jpg',Asin:'asin.jpg'}[p.cat]||'hero.jpg'));
 function toast(t){const e=h('div',{class:'toast'},t);document.body.append(e);setTimeout(()=>e.remove(),1800)}
 const price=p=>p.promo>0&&p.promo<p.price&&p.promoEnd>=today()?p.promo:p.price;
 const waLink=(num,m)=>`https://wa.me/${num}?text=${encodeURIComponent(m)}`;
 function theme(){const t=localStorage.getItem(K+'theme')||'dark';document.documentElement.dataset.theme=t;const b=$('#themeBtn');b&&b.addEventListener('click',()=>{const n=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=n;localStorage.setItem(K+'theme',n)})}
 theme();
+function pwa(){let dp=null,card=null;const btns=()=>document.querySelectorAll('.inst'),st=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+ if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+ if(st){btns().forEach(b=>b.hidden=true);return}
+ const ua=navigator.userAgent,ios=/iPhone|iPad|iPod/.test(ua),and=/Android/.test(ua);
+ const steps=ios?['Ketuk tombol Bagikan di Safari','Pilih "Tambah ke Layar Utama"','Ketuk Tambah']:and?['Ketuk menu ⋮ di Chrome','Pilih "Instal aplikasi" atau "Tambahkan ke layar utama"','Ketuk Instal']:['Buka di Chrome atau Edge','Klik ikon instal di ujung kanan bilah alamat','Klik Instal'];
+ const hideCard=()=>{if(card){card.remove();card=null}};
+ const guide=()=>{let d=$('#pwaD');if(!d){d=h('dialog',{id:'pwaD'});document.body.append(d)}d.replaceChildren(h('button',{class:'x',onclick:()=>d.close(),'aria-label':'Tutup'},'✕'),h('img',{class:'pl',src:'logo.png',width:72,height:72,alt:''}),h('h3',{},'Pasang Aplikasi'),h('ol',{class:'pst'},steps.map(s=>h('li',{},s))),h('button',{class:'btn gold',onclick:()=>d.close()},'Mengerti'));d.showModal()};
+ const go=async()=>{if(dp){dp.prompt();const r=await dp.userChoice;dp=null;if(r.outcome==='accepted')btns().forEach(b=>b.hidden=true);hideCard()}else guide()};
+ btns().forEach(b=>b.onclick=go);
+ addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;if(+localStorage.getItem(K+'pwaNo')>Date.now())return;
+  setTimeout(()=>{if(card||!dp)return;const adm=document.body.dataset.page==='admin';card=h('div',{class:'pwa'},h('img',{src:'logo.png',width:56,height:56,alt:''}),h('div',{},h('b',{},adm?'Pasang Admin Mas Bejo':'Pasang Aplikasi Mas Bejo'),h('small',{},'Buka lebih cepat dari layar utama, tampil layar penuh.')),h('button',{class:'btn gold sm',onclick:go},'Pasang'),h('button',{class:'pwx',onclick:()=>{localStorage.setItem(K+'pwaNo',Date.now()+3*864e5);hideCard()},'aria-label':'Nanti'},'✕'));document.body.append(card)},3600)});
+ addEventListener('appinstalled',()=>{btns().forEach(b=>b.hidden=true);hideCard()})}
+pwa();
 if(document.body.dataset.page==='shop')shop();
 function shop(){
  const S=Repo.get('settings');
@@ -41,8 +54,8 @@ function shop(){
  function drawMenu(){const g=$('#grid');g.replaceChildren();
   const list=prods().filter(p=>p.name.toLowerCase().includes(q)&&(cat==='Semua'||(cat==='Promo'?price(p)<p.price:cat==='Terlaris'?p.best:cat==='Asin'?p.cat!=='Manis':p.cat===cat)));
   if(!list.length)g.append(h('p',{},'Menu tidak ditemukan. Coba kata kunci lain.'));
-  list.forEach(p=>{const pr=price(p);
-   g.append(h('article',{class:'card'},h('img',{src:pimg(p),alt:p.name,loading:'lazy',width:400,height:300,onerror:e=>{e.target.src=FB}}),
+  list.forEach((p,i)=>{const pr=price(p);
+   g.append(h('article',{class:'card'},h('img',{src:pimg(p),alt:p.name,loading:i<6?'eager':'lazy',width:400,height:300,onerror:e=>{e.target.src=FB}}),
     pr<p.price?h('span',{class:'badge'},'Promo'):p.best?h('span',{class:'badge'},'Terlaris'):'',
     h('div',{},h('b',{},p.name),h('p',{},p.desc),h('span',{class:'price'},rp(pr),' ',pr<p.price?h('s',{},rp(p.price)):''),
      h('button',{class:'btn red',disabled:p.stock?null:'',onclick:()=>{cart[p.id]=(cart[p.id]||0)+1;saveCart();toast(p.name+' masuk keranjang')}},p.stock?'+ Keranjang':'Habis'))))})}
@@ -79,10 +92,6 @@ function shop(){
  const enter=()=>{sessionStorage.setItem('mbAdmin','1');location.href='admin.html'};
  $('#loginBtn').onclick=()=>$('#loginD').showModal();$('#demoBtn').onclick=enter;
  $('#loginF').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);if(f.get('e').trim().toLowerCase()==='admin@masbejo.demo'&&f.get('p')==='admin123')enter();else alert('Email atau password salah. Coba tombol Akun Demo.')};
- let dp=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e});
- const standalone=matchMedia('(display-mode: standalone)').matches;
- document.querySelectorAll('.inst').forEach(b=>{b.hidden=standalone;b.onclick=async()=>{if(dp){dp.prompt();await dp.userChoice;dp=null}else alert('Cara pasang aplikasi:\n• Android (Chrome): menu ⋮ lalu "Instal aplikasi".\n• Windows (Chrome/Edge): klik ikon instal di bilah alamat.\n• iPhone: Bagikan lalu "Tambah ke Layar Utama".')}});
- addEventListener('appinstalled',()=>document.querySelectorAll('.inst').forEach(b=>b.hidden=true));
  setTimeout(()=>{const l=$('#loader');l.classList.add('off');setTimeout(()=>l.remove(),450)},3000);
  $('#chatBtn').onclick=()=>{$('#chatOk').hidden=true;$('#chatD').showModal()};
  const chatMsg=f=>`Halo ${S.name}, saya ${f.get('name')} (${f.get('phone')}).\n${f.get('text')}`;
