@@ -19,3 +19,6 @@ Tambah menu ke keranjang → checkout (QRIS / COD) → buka admin pada browser y
 
 ## Migrasi Firebase
 Semua akses data lewat objek `Repo` di `script.js` (`get/save/put/del`) + versi skema. Ganti implementasinya dengan Firestore, login dengan Firebase Auth, foto dengan Storage, dan atur Security Rules. Jangan taruh secret/service account di frontend.
+
+## Pembaruan v2
+Loading screen 3 detik, tombol Masuk + Akun Demo (`admin@masbejo.demo` / `admin123`), tombol Pasang Aplikasi (PWA Android/Windows), ikon dari logo, preview WhatsApp (`preview.jpg`), checkout 4 langkah (keranjang → data → bayar → selesai). `qris.png` adalah QRIS yang kamu kirim; ganti dengan QRIS merchant Mas Bejo lewat Admin → Pengaturan. Foto `hero/manis/asin.jpg` dipotong dari banner; ganti dengan foto asli lewat Admin → Menu.
