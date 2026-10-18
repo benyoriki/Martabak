@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Martabak Mas Bejo — Martabak Manis & Asin</title>
+<meta name="description" content="Martabak manis dan asin dengan topping melimpah. Pesan mudah via HP, bayar QRIS atau di tempat.">
+<link rel="canonical" href="./"><link rel="icon" href="favicon.png"><link rel="manifest" href="manifest.json">
+<meta property="og:title" content="Martabak Mas Bejo"><meta property="og:description" content="Manisnya Bikin Nagih!"><meta property="og:image" content="preview.jpg"><meta property="og:type" content="website">
+<link rel="stylesheet" href="style.css"></head>
+<body data-page="shop">
+<header class="top"><a class="logo" href="#home"><b>Martabak</b> <i>Mas Bejo</i></a>
+<nav id="nav"><a href="#home">Home</a><a href="#menu">Menu</a><a href="#promo">Promo</a><a href="#tentang">Tentang</a><a href="#lokasi">Lokasi</a></nav>
+<div class="acts"><button id="themeBtn" aria-label="Ganti tema">🌓</button><button id="cartBtn" aria-label="Keranjang">🛒<span id="badge">0</span></button><a class="btn red hide-s" href="#menu">Pesan Sekarang</a><button id="burger" aria-label="Menu">☰</button></div></header>
+<main>
+<section id="home" class="hero"><div><h1><span class="w">Martabak</span> <span class="y" data-s="name2">Mas Bejo</span></h1>
+<h2>Martabak Manis & Asin</h2><p>Rasa istimewa, topping melimpah, dibuat saat kamu pesan.</p>
+<p class="tag" data-s="tagline"></p>
+<p class="meta">📍 <span data-s="address"></span> &nbsp; 🕔 Buka <span data-s="hours"></span> <b id="status"></b></p>
+<div class="row"><a class="btn green wa" target="_blank" rel="noopener">Pesan via WhatsApp</a><a class="btn red" href="#menu">Lihat Menu</a></div></div>
+<img id="heroImg" alt="Martabak manis topping cokelat keju" width="600" height="450"></section>
+<section class="feat"><div>⭐<b>Bahan Berkualitas</b></div><div>🧀<b>Banyak Pilihan Rasa</b></div><div>📱<b>Pesan Mudah via HP</b></div><div>💳<b>QRIS / Bayar di Tempat</b></div></section>
+<section id="menu"><h2>Menu Favorit</h2>
+<div class="row"><div id="cats" class="row"></div><input id="q" type="search" placeholder="Cari menu…" aria-label="Cari menu"></div>
+<div id="grid" class="grid"></div></section>
+<section id="promo" class="promo"><h2 data-s="promoTitle"></h2><p data-s="promoText"></p><small>Data demo — atur harga promo & tanggal di dasbor admin.</small></section>
+<section id="tentang"><h2>Tentang Kami</h2><p data-s="about"></p></section>
+<section id="lokasi"><h2>Lokasi & Jam Buka</h2><p>📍 <span data-s="address"></span></p><p>🕔 Setiap hari <span data-s="hours"></span></p><p>💬 +<span data-s="wa"></span></p><a id="maps" class="btn red" target="_blank" rel="noopener">Buka Google Maps</a></section>
+</main>
+<footer><b>Martabak <i>Mas Bejo</i></b><p><span data-s="address"></span> · Buka <span data-s="hours"></span> · <a class="wa" target="_blank" rel="noopener">WhatsApp</a></p><small>© 2026 Martabak Mas Bejo · Website & System Demo — benyoriki.com</small></footer>
+<button id="chatBtn" class="fab" aria-label="Chat">💬</button>
+<dialog id="cartD"><button class="x" data-close>✕</button><h3>Keranjang Pesanan</h3><div id="items"></div>
+<form id="co"><p class="tot">Total <b id="total"></b></p>
+<label>Nama<input name="name" required maxlength="60"></label><label>Nomor HP<input name="phone" type="tel" required pattern="[0-9+ ]{9,16}"></label>
+<label>Pengambilan<input value="Ambil sendiri (layanan antar belum aktif)" disabled></label>
+<label>Catatan<textarea name="note" maxlength="200" placeholder="Contoh: potong 8 bagian"></textarea></label>
+<fieldset><legend>Pembayaran</legend><label class="r"><input type="radio" name="pay" value="QRIS" checked> QRIS</label><label class="r"><input type="radio" name="pay" value="COD"> Bayar di Tempat</label></fieldset>
+<button class="btn red">Buat Pesanan</button></form><div id="done" hidden></div></dialog>
+<dialog id="chatD"><button class="x" data-close>✕</button><h3>Chat Admin</h3><form id="chatF"><label>Nama<input name="name" required></label><label>Nomor HP<input name="phone" type="tel" required></label><label>Pesan<textarea name="text" required maxlength="300"></textarea></label><button class="btn red">Kirim</button><a id="chatWa" class="btn green" target="_blank" rel="noopener">Kirim ke WhatsApp</a></form><p id="chatOk" hidden></p><small>Demo: pesan tersimpan di browser ini saja, tidak sampai ke perangkat admin lain.</small></dialog>
+<script src="script.js"></script></body></html>
