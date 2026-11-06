@@ -47,3 +47,16 @@ Semua data (menu, pesanan, inbox, pengaturan) ada di **localStorage browser masi
 
 ## Belum dapat diuji
 - Foto asli (file tidak ada), tampilan di perangkat Android fisik, pemasangan PWA, pengiriman WhatsApp sungguhan, Google Fonts (diblokir di sandbox; ada fallback font sistem), dan deploy langsung di GitHub Pages.
+
+## V2.2 — Loading screen & polesan tampilan
+- Loading screen 4 detik (hanya index.html, setiap buka/muat ulang): foto martabak, cincin emas berputar, uap, teks tahap ("Menuang adonan…" → "Siap dihidangkan panas!"), progress bar 4 detik, dan kredit "Sistem & Website developer benyoriki.com" (link membuka tab baru). Pengaman CSS menutup loader jika JS gagal.
+- Header kini beralih ke menu burger di lebar ≤1100px, sehingga tidak berdesakan saat Chrome HP memakai mode "Situs desktop" (~980px).
+- Perbaikan grid: kartu bergaris rasio (panel Manis/Asin, galeri) kini selalu mengisi kolom.
+- Tema terang: emas diganti oranye tua agar terbaca; tombol/label emas tetap cerah.
+- Baru: kartu "Terlaris" di hero (data nyata, tombol tambah), reveal saat scroll, galeri rasa carousel di HP, pita CTA "Lapar? Pesan sekarang".
+
+## V2.3 — Perbaikan mode terang & gelap
+- Label "Pilihan Manis/Asin" dan label promo terbaca di kedua mode (sebelumnya gelap di atas gelap / emas di atas emas).
+- HP: panel Manis/Asin menampilkan foto utuh di atas, teks di panel bawah (foto tidak tertutup).
+- Carousel galeri sejajar dengan margin halaman; animasi reveal punya pengaman agar konten tidak pernah tersembunyi.
+- Bayangan kartu di mode terang, tombol lokasi penuh lebar di HP, kredit benyoriki.com di footer menjadi tautan.

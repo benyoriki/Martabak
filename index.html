@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id"><head><meta charset="utf-8">
+<html lang="id" class="ld"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#100905">
 <title>Martabak Mas Bejo — Sekali Gigitan, Susah Berhenti!</title>
 <meta name="description" content="Martabak manis & asin premium, topping melimpah, dibuat fresh setiap pesanan. Pesan online dari HP, bayar QRIS atau di tempat. Buka 17.00–00.00.">
@@ -33,7 +33,12 @@
 <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
 </defs></svg>
 
-<div id="loader"><img src="logo.png" alt="" width="120" height="120"><p>Menyiapkan martabak panas…</p><div class="bar"><i></i></div></div>
+<div id="loader" role="status" aria-label="Memuat Martabak Mas Bejo"><div class="lbg"></div>
+ <div class="lc"><div class="lring"><span class="steam" aria-hidden="true"><i></i><i></i><i></i></span><img src="logo.png" alt="Martabak Mas Bejo" width="128" height="128"></div>
+  <h2>Sekali Gigitan,<br><em>Susah Berhenti!</em></h2>
+  <p class="lst"><span>Menuang adonan hangat…</span><span>Menabur topping melimpah…</span><span>Siap dihidangkan panas!</span></p>
+  <div class="bar"><i></i></div></div>
+ <p class="ldev">Sistem &amp; Website developer <a href="https://benyoriki.com" target="_blank" rel="noopener">benyoriki.com</a></p></div>
 
 <header class="top"><div class="in">
  <a class="logo" href="#home"><img src="logo.png" alt="" width="44" height="44"><span><b>Martabak</b> <i data-s="name2">Mas Bejo</i></span></a>
@@ -60,7 +65,7 @@
   <div class="row"><a class="btn red lg" href="#menu"><svg class="ico" width="20" height="20"><use href="#i-cart"/></svg>Pesan Sekarang</a><a class="btn ghost lg" href="#menu"><svg class="ico" width="20" height="20"><use href="#i-grid"/></svg>Jelajahi Menu</a></div>
   <p class="meta"><svg class="ico" width="16" height="16"><use href="#i-pin"/></svg><span data-s="address"></span> · <span data-s="hours"></span> <b class="status"></b></p>
  </div>
- <div class="pic"><img id="heroImg" alt="Martabak manis dengan topping cokelat dan keju" width="1200" height="800" fetchpriority="high" decoding="async"><span class="from" id="fromWrap">Mulai dari <b id="fromPrice"></b></span></div>
+ <div class="pic"><img id="heroImg" alt="Martabak manis dengan topping cokelat dan keju" width="1200" height="800" fetchpriority="high" decoding="async"><div class="bs" id="bs"></div><span class="from" id="fromWrap">Mulai dari <b id="fromPrice"></b></span></div>
 </div></section>
 
 <section class="feat"><div class="in fg4">
@@ -71,8 +76,8 @@
 </div></section>
 
 <section class="sec sh-sec"><div class="in sh2">
- <article class="sh"><img src="img/hero.webp" alt="Martabak manis cokelat dan keju" width="1200" height="800" loading="lazy" data-kind="choco"><div class="shc"><span class="eyebrow gold">Pilihan Manis</span><h2>Martabak <em>Manis</em></h2><p>Cokelat, keju, nutella, sampai oreo — lembut dan topping tebal.</p><button class="btn red" data-cat="Manis">Lihat Menu Manis</button></div></article>
- <article class="sh"><img src="img/asin-hero.webp" alt="Martabak asin isi telur dan daging" width="1200" height="800" loading="lazy" data-kind="egg"><div class="shc"><span class="eyebrow gold">Pilihan Asin</span><h2>Martabak <em>Asin</em></h2><p>Telur, daging sapi, kornet, sampai sosis keju — gurih dan padat isi.</p><button class="btn red" data-cat="Asin">Lihat Menu Asin</button></div></article>
+ <article class="sh"><img src="img/hero.webp" alt="Martabak manis cokelat dan keju" width="1200" height="800" loading="lazy" data-kind="choco"><div class="shc"><span class="eyebrow ey">Pilihan Manis</span><h2>Martabak <em>Manis</em></h2><p>Cokelat, keju, nutella, sampai oreo — lembut dan topping tebal.</p><button class="btn red" data-cat="Manis">Lihat Menu Manis</button></div></article>
+ <article class="sh"><img src="img/asin-hero.webp" alt="Martabak asin isi telur dan daging" width="1200" height="800" loading="lazy" data-kind="egg"><div class="shc"><span class="eyebrow ey">Pilihan Asin</span><h2>Martabak <em>Asin</em></h2><p>Telur, daging sapi, kornet, sampai sosis keju — gurih dan padat isi.</p><button class="btn red" data-cat="Asin">Lihat Menu Asin</button></div></article>
 </div></section>
 <section id="menu" class="sec"><div class="in">
  <h2 class="st">Menu <em>Favorit</em> Kami</h2><p class="sub">Pilihan martabak terbaik dengan rasa istimewa.</p>
@@ -82,7 +87,7 @@
 
 <section class="sec" id="rasa"><div class="in"><h2 class="st">Semua Pilihan <em>Rasa</em></h2><p class="sub">Klik rasa untuk melihat detail. Rasa yang belum ada di daftar menu bisa ditanyakan ke admin lewat WhatsApp.</p><div id="gallery" class="gal"></div></div></section>
 <section id="promo" class="sec promo"><div class="in"><div class="pbox">
- <div><span class="eyebrow gold">Promo</span><h2 data-s="promoTitle"></h2><p data-s="promoText"></p></div>
+ <div><span class="eyebrow ey">Promo</span><h2 data-s="promoTitle"></h2><p data-s="promoText"></p></div>
  <p id="promoEmpty" class="mu" hidden>Belum ada promo aktif saat ini. Cek lagi nanti ya!</p>
  <div id="promoList" class="pl2"></div>
 </div></div></section>
@@ -98,13 +103,14 @@
  <div><svg class="ico" width="22" height="22"><use href="#i-clock"/></svg><b>Jam buka</b><span>Setiap hari <span data-s="hours"></span></span><span class="status"></span></div>
  <div><svg class="ico" width="22" height="22"><use href="#i-wa"/></svg><b>WhatsApp</b><span>+<span data-s="wa"></span></span></div></div>
  <div class="row"><a id="maps" class="btn red" target="_blank" rel="noopener">Buka Google Maps</a><a class="btn green wa">Chat via WhatsApp</a></div></div></section>
+<section class="sec cta"><div class="in"><div class="ctab"><div><h2>Lapar? <em>Pesan sekarang</em></h2><p>Dibuat fresh saat kamu pesan. <b class="status"></b></p></div><div class="row"><a class="btn red lg" href="#menu">Pilih Menu</a><a class="btn green lg wa">Chat via WhatsApp</a></div></div></div></section>
 </main>
 
 <footer><div class="in"><div class="fg"><div><img src="logo.png" alt="Martabak Mas Bejo" width="72" height="72" loading="lazy"><p data-s="tagline"></p><small>Martabak Manis &amp; Asin</small></div>
 <div><b>Navigasi</b><a href="#home">Home</a><a href="#menu">Menu</a><a href="#promo">Promo</a><a href="#tentang">Tentang</a><a href="#lokasi">Lokasi</a></div>
 <div><b>Kontak</b><span data-s="address"></span><a class="wa">WhatsApp +<span data-s="wa"></span></a></div>
 <div><b>Jam Buka</b><span>Setiap hari</span><span data-s="hours"></span></div></div>
-<small class="copy">© 2026 Martabak Mas Bejo · Website &amp; System Demo — benyoriki.com</small></div></footer>
+<small class="copy">© 2026 Martabak Mas Bejo · Website &amp; System Demo — <a href="https://benyoriki.com" target="_blank" rel="noopener">benyoriki.com</a></small></div></footer>
 
 <nav class="bnav" aria-label="Navigasi bawah"><a href="#home" class="on"><svg class="ico" width="22" height="22"><use href="#i-home"/></svg>Home</a><a href="#menu"><svg class="ico" width="22" height="22"><use href="#i-grid"/></svg>Menu</a><a href="#promo"><svg class="ico" width="22" height="22"><use href="#i-tag"/></svg>Promo</a><a href="#cart" class="cartOpen"><svg class="ico" width="22" height="22"><use href="#i-cart"/></svg>Keranjang<span class="cbadge" hidden>0</span></a><a href="#lokasi"><svg class="ico" width="22" height="22"><use href="#i-pin"/></svg>Lokasi</a></nav>
 <button id="cartBar" class="cbar" hidden><span id="cartTot"></span><b>Lihat Pesanan ›</b></button>

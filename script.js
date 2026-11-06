@@ -149,7 +149,11 @@ function pwa() {
   offer();
 }
 pwa();
-setTimeout(() => { const l = document.getElementById('loader'); l && l.remove() }, 4000);
+/* Loading screen: tampil tepat 4 detik sejak halaman dibuka / dimuat ulang (hanya index.html) */
+(function () {
+  const l = document.getElementById('loader'); if (!l) return;
+  setTimeout(() => { l.classList.add('off'); document.documentElement.classList.remove('ld'); setTimeout(() => l.remove(), 700) }, Math.max(0, 4000 - performance.now()));
+})();
 /* config.json opsional: cara menerbitkan menu/pengaturan ke semua pengunjung tanpa server (lihat README) */
 window.mbReady = fetch('config.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(c => { if (c && typeof c === 'object') { if (Array.isArray(c.products)) CFG.products = c.products; if (c.settings && typeof c.settings === 'object') CFG.settings = c.settings } }).catch(() => { });
 if (document.body.dataset.page === 'shop') window.mbReady.then(shop);
@@ -239,6 +243,13 @@ function shop() {
       return p ? h('button', { class: 'gi', type: 'button', onclick: () => detail(p), 'aria-label': 'Lihat ' + n }, im, lab) : h('a', { class: 'gi', href: waLink(S.wa, `Halo ${S.name}, apakah martabak ${n} tersedia? Berapa harganya?`), target: '_blank', rel: 'noopener', 'aria-label': 'Tanya ' + n + ' via WhatsApp' }, im, lab);
     })))));
   }
+  const bp = prods().find(p => p.best && p.stock) || prods().find(p => p.stock), bs = $('#bs');
+  if (bp && bs) bs.replaceChildren(pic(pimg(bp), kindOf(bp), bp.name, { w: 120, h: 90, cls: 'bsi' }), h('div', { class: 'bst' }, h('small', {}, bp.best ? '★ Terlaris' : 'Pilihan'), h('b', {}, bp.name), h('span', {}, rp(price(bp)))), h('button', { class: 'btn red', type: 'button', onclick: () => add(bp), 'aria-label': 'Tambah ' + bp.name + ' ke keranjang' }, '+'));
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(es => es.forEach(en => { if (en.isIntersecting || en.boundingClientRect.top < 0) { en.target.classList.add('in'); io.unobserve(en.target) } }), { rootMargin: '0px 0px -6% 0px' }), rvs = $$('.feat .fg4>div,.sh,.steps3>li,.loc>div,.pbox,.about,.ctab,#gallery .gg');
+    rvs.forEach(e => { e.classList.add('rv'); io.observe(e) });
+    setTimeout(() => rvs.forEach(e => e.classList.add('in')), 8000); /* pengaman: tidak ada konten yang tetap tersembunyi */
+  }
   const live = prods(); if (live.length) $('#fromPrice').textContent = rp(Math.min(...live.map(price))); else $('#fromWrap').hidden = true;
   $('#q').oninput = e => { q = e.target.value.toLowerCase().trim(); drawMenu() };
 
@@ -327,7 +338,5 @@ function shop() {
   $('#chatWa').onclick = e => { const form = $('#chatF'); if (!form.checkValidity()) { e.preventDefault(); form.reportValidity(); return } e.currentTarget.href = waLink(S.wa, chatMsg(new FormData(form))) };
 
   /* ---- Mulai ---- */
-  const hideLoader = () => { const l = $('#loader'); if (l && !l.classList.contains('off')) { l.classList.add('off'); setTimeout(() => l.remove(), 400) } };
-  addEventListener('load', () => setTimeout(hideLoader, 250)); setTimeout(hideLoader, 1500);
   drawPromo(); drawCats(); drawMenu(); drawGallery(); saveCart();
 }
