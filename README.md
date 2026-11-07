@@ -60,3 +60,14 @@ Semua data (menu, pesanan, inbox, pengaturan) ada di **localStorage browser masi
 - HP: panel Manis/Asin menampilkan foto utuh di atas, teks di panel bawah (foto tidak tertutup).
 - Carousel galeri sejajar dengan margin halaman; animasi reveal punya pengaman agar konten tidak pernah tersembunyi.
 - Bayangan kartu di mode terang, tombol lokasi penuh lebar di HP, kredit benyoriki.com di footer menjadi tautan.
+
+## V2.4 — Ikon & pratinjau link
+- Logo baru (logo.png, favicon.png, icon-512.png, icon-maskable.png, apple-touch-icon.png) dari gambar yang dikirim.
+- preview.jpg (1200×630) dari banner promosi; meta Open Graph/Twitter diperbarui (judul, deskripsi, gambar, alt). URL gambar memakai `?v=11` agar cache WhatsApp ter-refresh.
+- Jika pratinjau lama masih muncul di WhatsApp: WhatsApp menyimpan cache beberapa hari. Kirim link dengan tambahan `?v=2` (contoh `https://benyoriki.github.io/Martabak/?v=2`) atau tunggu cache habis.
+
+## V2.5 — Dashboard Admin Baru + Simulasi Data Uji
+**Dashboard (HP & PC):** header sapaan + tanggal + status toko + aksi cepat; 4 KPI dengan tren (hari ini vs kemarin, 7 hari vs minggu lalu); alur pesanan (klik = filter pesanan); grafik omzet 7 hari (label hari, hari ini disorot, garis rata-rata); menu terlaris; jam sibuk; split QRIS/Tunai & Ambil/Delivery; ringkasan toko; pesanan terbaru; feed aktivitas. Lonceng notifikasi kini memuat pesanan baru, verifikasi bayar, dan pesan (klik langsung membuka detail). Navigasi HP: 4 tab utama + "Lainnya" (tidak lagi terpotong). Toolbar Laporan dirapikan. Status pesanan kini tercatat di `hist`.
+**Simulasi (Admin → Backup):** *Buat Data Simulasi* (14 hari pesanan, status/pembayaran/delivery beragam, 9 pesan inbox, hari ini ada pesanan Baru & 1 menunggu verifikasi), *Simulator Live* (pesanan/pesan/bukti bayar baru tiap ±8 detik + toast + bunyi + pill LIVE), *Hapus Data Simulasi* (hanya data bertanda `sim:true`; data asli aman).
+**Catatan jujur:** data simulasi tersimpan di localStorage browser itu saja; angka dashboard ikut menghitungnya (ada banner peringatan). Hapus simulasi sebelum website dipakai sungguhan.
+**Belum diuji:** perangkat nyata (hanya Chromium emulasi), bunyi notifikasi di iOS, browser Safari.

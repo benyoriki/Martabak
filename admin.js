@@ -34,12 +34,19 @@
 
   /* ---------- Shell ---------- */
   function counts() { const o = orders().filter(x => x.status === 'Baru').length, m = msgs().filter(x => x.status === 'Baru').length; return { o, m } }
+  const mq = matchMedia('(max-width:820px)'), PRIMARY = ['dash', 'orders', 'menu', 'inbox'];
   function drawTabs() {
-    const c = counts();
-    $('#tabs').replaceChildren(...TABS.map(([k, t, i]) => h('button', { class: k === tab ? 'on' : '', 'aria-current': k === tab ? 'page' : null, onclick: () => go(k) }, ico(i), h('span', {}, t), k === 'orders' && c.o ? h('i', { class: 'nb' }, c.o) : k === 'inbox' && c.m ? h('i', { class: 'nb' }, c.m) : null)));
+    const c = counts(), mob = mq.matches, bd = k => k === 'orders' && c.o ? h('i', { class: 'nb' }, c.o) : k === 'inbox' && c.m ? h('i', { class: 'nb' }, c.m) : null;
+    const list = mob ? TABS.filter(t => PRIMARY.includes(t[0])) : TABS;
+    const btns = list.map(([k, t, i]) => h('button', { class: k === tab ? 'on' : '', 'aria-current': k === tab ? 'page' : null, onclick: () => go(k) }, ico(i), h('span', {}, t), bd(k)));
+    if (mob) btns.push(h('button', { class: !PRIMARY.includes(tab) ? 'on' : '', onclick: moreD }, ico('menu'), h('span', {}, 'Lainnya')));
+    $('#tabs').replaceChildren(...btns);
     const n = c.o + c.m; $('#bn').hidden = !n; $('#bn').textContent = n;
     const S = sett(); $('#stSw').checked = !S.closed; $('#stLbl').textContent = S.closed ? 'Tutup (manual)' : 'Buka';
+    const lp = $('#livePill'); if (lp) lp.hidden = !live;
   }
+  function moreD() { modal('Menu Lainnya', h('div', { class: 'more' }, TABS.filter(t => !PRIMARY.includes(t[0])).map(([k, t, i]) => h('button', { class: k === tab ? 'on' : '', onclick: () => { dlg.close(); go(k) } }, ico(i, 26), h('span', {}, t))))) }
+  mq.addEventListener('change', drawTabs);
   function go(k) { tab = k; location.hash = k; render(); window.scrollTo(0, 0) }
   function render() {
     $('#ttl').textContent = TABS.find(t => t[0] === tab)[1]; drawTabs(); $('#np').hidden = true;
@@ -47,8 +54,11 @@
   }
   $('#stSw').onchange = e => { const S = sett(); S.closed = !e.target.checked; Repo.save('settings', S); render(); toast(S.closed ? 'Toko ditandai TUTUP di website' : 'Toko ditandai BUKA di website') };
   $('#bell').onclick = () => {
-    const np = $('#np'), c = counts(); if (!np.hidden) { np.hidden = true; return }
-    np.replaceChildren(...[h('b', {}, 'Notifikasi'), c.o || c.m ? null : h('p', { class: 'mu' }, 'Tidak ada yang baru.'), c.o ? h('button', { class: 'nl', onclick: () => { oFilter = 'Baru'; go('orders') } }, c.o + ' pesanan baru') : null, c.m ? h('button', { class: 'nl', onclick: () => go('inbox') }, c.m + ' pesan baru di inbox') : null].filter(Boolean)); np.hidden = false;
+    const np = $('#np'); if (!np.hidden) { np.hidden = true; return }
+    const no = orders().filter(o => o.status === 'Baru').sort((a, b) => b.time.localeCompare(a.time)), pv = orders().filter(o => o.status !== 'Baru' && valid(o) && o.payStatus === 'Menunggu Verifikasi'), nm = msgs().filter(x => x.status === 'Baru').sort((a, b) => b.time.localeCompare(a.time));
+    const it = (e, t, sub, fn) => h('button', { class: 'nl', onclick: () => { np.hidden = true; fn() } }, h('span', { class: 'ne' }, e), h('span', {}, h('b', {}, t), h('small', {}, sub)));
+    const rows = [...no.slice(0, 5).map(o => it('🛒', 'Pesanan baru ' + o.no, o.name + ' · ' + rp(o.total) + ' · ' + ago(o.time), () => { go('orders'); orderD(o.id) })), ...pv.slice(0, 3).map(o => it('💳', 'Verifikasi pembayaran', o.no + ' · ' + o.name + ' · ' + rp(o.total), () => { go('orders'); orderD(o.id) })), ...nm.slice(0, 4).map(x => it('✉️', 'Pesan dari ' + x.name, x.text.slice(0, 60) + ' · ' + ago(x.time), () => { openMsg = x.id; go('inbox') }))];
+    np.replaceChildren(h('b', { class: 'nh' }, 'Notifikasi', h('small', {}, rows.length ? ' · ' + (no.length + pv.length + nm.length) + ' baru' : '')), ...(rows.length ? rows : [h('p', { class: 'mu' }, 'Tidak ada notifikasi baru.')])); np.hidden = false;
   };
   /* sinkron bila toko (tab lain) menulis data baru */
   addEventListener('storage', e => { if (e.key && e.key.startsWith(K) && !dlg.open && !$('#app').hidden && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) render() });
@@ -59,40 +69,66 @@
   const empty = t => h('p', { class: 'empty' }, t);
   const kfmt = n => n >= 1e6 ? (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + 'jt' : n >= 1e3 ? Math.round(n / 1e3) + 'rb' : String(n);
   function lastDays(n) { const r = []; for (let i = n - 1; i >= 0; i--) r.push(new Date(Date.now() - i * 864e5).toLocaleDateString('sv', { timeZone: 'Asia/Jakarta' })); return r }
+  let live = false;
+  const ago = t => { const s = Math.max(0, (Date.now() - new Date(t)) / 1000); if (s < 60) return 'baru saja'; if (s < 3600) return Math.floor(s / 60) + ' mnt lalu'; if (s < 86400) return Math.floor(s / 3600) + ' jam lalu'; return Math.floor(s / 86400) + ' hari lalu' };
+  const dlt = (a, b) => { if (!b) return a ? h('span', { class: 'dl up' }, 'baru') : h('span', { class: 'dl' }, '–'); const p = Math.round((a - b) / b * 100); return h('span', { class: 'dl ' + (p >= 0 ? 'up' : 'dn') }, (p >= 0 ? '▲ ' : '▼ ') + Math.abs(p) + '%') };
   function barChart(days, vals, label) {
-    const NS = 'http://www.w3.org/2000/svg', W = 560, H = 210, L = 44, B = 28, T = 14, mx = Math.max(...vals, 1), sx = (W - L - 8) / days.length;
+    const NS = 'http://www.w3.org/2000/svg', W = 560, H = 220, L = 44, B = 30, T = 16, mx = Math.max(...vals, 1), sx = (W - L - 8) / days.length, ch = H - T - B, avg = vals.reduce((a, b) => a + b, 0) / vals.length;
     const el = (t, a, tx) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (tx != null) e.textContent = tx; return e };
     const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chart', role: 'img', 'aria-label': label });
-    [0, .5, 1].forEach(f => { const y = T + (H - T - B) * (1 - f); svg.append(el('line', { x1: L, x2: W - 4, y1: y, y2: y, class: 'gl' }), el('text', { x: L - 6, y: y + 4, 'text-anchor': 'end', class: 'ax' }, kfmt(Math.round(mx * f)))) });
-    days.forEach((d, i) => { const hh = (H - T - B) * vals[i] / mx, x = L + i * sx + sx * .18, w = sx * .64; svg.append(el('rect', { x, y: T + (H - T - B) - hh, width: w, height: Math.max(hh, vals[i] ? 2 : 0), rx: 4, class: 'bc' }), el('text', { x: x + w / 2, y: H - 9, 'text-anchor': 'middle', class: 'ax' }, d.slice(8) + '/' + d.slice(5, 7)));
-      const t = el('title', {}, d + ': ' + rp(vals[i])); svg.lastChild.append(t) });
+    [0, .5, 1].forEach(f => { const y = T + ch * (1 - f); svg.append(el('line', { x1: L, x2: W - 4, y1: y, y2: y, class: 'gl' }), el('text', { x: L - 6, y: y + 4, 'text-anchor': 'end', class: 'ax' }, kfmt(Math.round(mx * f)))) });
+    days.forEach((d, i) => { const hh = ch * vals[i] / mx, x = L + i * sx + sx * .16, w = sx * .68, last = i === days.length - 1;
+      const r = el('rect', { x, y: T + ch - hh, width: w, height: Math.max(hh, vals[i] ? 2 : 0), rx: 6, class: 'bc' + (last ? ' td' : '') }); r.append(el('title', {}, d + ': ' + rp(vals[i]))); svg.append(r);
+      if (vals[i]) svg.append(el('text', { x: x + w / 2, y: T + ch - hh - 5, 'text-anchor': 'middle', class: 'vl' }, kfmt(vals[i])));
+      svg.append(el('text', { x: x + w / 2, y: H - 10, 'text-anchor': 'middle', class: 'ax' + (last ? ' tdx' : '') }, last ? 'Hari ini' : new Date(d + 'T12:00:00+07:00').toLocaleDateString('id-ID', { weekday: 'short', timeZone: 'Asia/Jakarta' })));
+    });
+    if (avg) { const y = T + ch * (1 - avg / mx); svg.append(el('line', { x1: L, x2: W - 4, y1: y, y2: y, class: 'av' }), el('text', { x: W - 6, y: y - 4, 'text-anchor': 'end', class: 'avt' }, 'rata-rata ' + kfmt(Math.round(avg)))) }
     return svg;
   }
 
   /* ---------- DASHBOARD ---------- */
   function dash(m) {
-    const os = orders(), S = sett(), ps = prods(), td = today(), vo = os.filter(valid);
-    const omz = os.filter(done).reduce((a, o) => a + o.total, 0), omzT = os.filter(o => done(o) && dayOf(o.time) === td).reduce((a, o) => a + o.total, 0);
-    const proc = os.filter(o => ['Dikonfirmasi', 'Diproses', 'Siap Diambil'].includes(o.status)).length;
-    const promoN = ps.filter(p => p.on && promoOn(p)).length;
-    m.append(h('div', { class: 'wl' }, h('div', {}, h('h2', {}, 'Halo, Admin Mas Bejo 👋'), h('p', {}, 'Kelola pesanan, menu, dan promo di sini.')), h('small', {}, 'Data tersimpan di browser ini (localStorage).')));
-    m.append(h('div', { class: 'sg' },
-      stat('orders', 'Total Pesanan', os.length, vo.length + ' tidak dibatalkan', 'b'), stat('bell', 'Pesanan Baru', os.filter(o => o.status === 'Baru').length, 'perlu dikonfirmasi', 'r'),
-      stat('flame', 'Sedang Diproses', proc, 'konfirmasi → siap', 'y'), stat('check', 'Selesai', os.filter(done).length, 'pesanan selesai', 'g'),
-      stat('wallet', 'Omzet (Selesai)', rp(omz), 'hari ini ' + rp(omzT), 'y'), stat('menu', 'Menu Aktif', ps.filter(p => p.on).length, ps.length + ' total menu', 'b'), stat('promo', 'Promo Aktif', promoN, 'sedang berlaku', 'r'), stat('mail', 'Inbox Baru', msgs().filter(x => x.status === 'Baru').length, msgs().length + ' pesan', 'g')));
-    const days = lastDays(7), vals = days.map(d => os.filter(o => done(o) && dayOf(o.time) === d).reduce((a, o) => a + o.total, 0));
-    const grid = h('div', { class: 'two' });
-    grid.append(panel('Grafik Omzet 7 Hari Terakhir', vals.some(Boolean) ? barChart(days, vals, 'Omzet pesanan selesai 7 hari terakhir') : empty('Belum ada pesanan selesai dalam 7 hari terakhir. Grafik dihitung dari pesanan berstatus Selesai.')));
-    const top = {}; vo.forEach(o => o.items.forEach(i => { top[i.name] = (top[i.name] || 0) + i.qty })); const tl = Object.entries(top).sort((a, b) => b[1] - a[1]).slice(0, 5), tm = tl[0] ? tl[0][1] : 1;
-    grid.append(panel('Menu Terlaris', tl.length ? h('ol', { class: 'tp' }, tl.map(([n, q]) => h('li', {}, h('span', {}, n), h('b', {}, q + ' pcs'), h('i', { style: `width:${Math.round(q / tm * 100)}%` })))) : empty('Belum ada pesanan.')));
-    m.append(grid);
-    m.append(panel('Pesanan Terbaru', h('div', { class: 'row end tiny' }, h('button', { class: 'chip sm', onclick: () => go('orders') }, 'Lihat semua ›')), os.length ? ordTable(os.slice().sort((a, b) => b.time.localeCompare(a.time)).slice(0, 5)) : empty('Belum ada pesanan. Pesanan dari website akan muncul di sini (pada browser yang sama).')));
+    const os = orders(), S = sett(), ps = prods(), td = today(), yd = lastDays(2)[0], vo = os.filter(valid), ms = msgs();
+    const sum = l => l.reduce((a, o) => a + o.total, 0), onDay = (l, d) => l.filter(o => dayOf(o.time) === d);
+    const oT = onDay(vo, td), oY = onDay(vo, yd), omT = sum(onDay(os.filter(done), td)), omY = sum(onDay(os.filter(done), yd));
+    const days = lastDays(7), vals = days.map(d => sum(onDay(os.filter(done), d))), w1 = vals.reduce((a, b) => a + b, 0);
+    const prev = lastDays(14).slice(0, 7), w0 = sum(os.filter(o => done(o) && prev.includes(dayOf(o.time))));
+    const nNew = os.filter(o => o.status === 'Baru').length, nVer = os.filter(o => valid(o) && o.payStatus === 'Menunggu Verifikasi').length, nMsg = ms.filter(x => x.status === 'Baru').length;
+    const hr = +new Date().toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Asia/Jakarta' }) % 24, gr = hr < 11 ? 'Selamat pagi' : hr < 15 ? 'Selamat siang' : hr < 18 ? 'Selamat sore' : 'Selamat malam';
+    const hasSim = os.some(o => o.sim) || ms.some(x => x.sim);
+    m.append(h('section', { class: 'dh' }, h('div', {}, h('small', {}, new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })), h('h2', {}, gr + ', Mas Bejo 👋'), h('p', {}, nNew + nVer + nMsg ? `Ada ${nNew} pesanan baru${nVer ? ', ' + nVer + ' menunggu verifikasi bayar' : ''} dan ${nMsg} pesan belum dibaca.` : 'Semua beres — tidak ada yang menunggu tindakan.')),
+      h('div', { class: 'dq' }, h('span', { class: 'chip sm st ' + (S.closed ? 'cl' : 'op') }, h('i', {}), S.closed ? 'Toko Tutup (manual)' : 'Toko Buka'), h('button', { class: 'btn red sm', onclick: () => { oFilter = 'Baru'; go('orders') } }, 'Proses Pesanan Baru'), h('button', { class: 'chip sm', onclick: () => go('menu') }, '+ Menu'), h('a', { class: 'chip sm', href: 'index.html' }, 'Lihat Website ›'))));
+    if (hasSim) m.append(h('div', { class: 'simbar' }, h('span', {}, '🧪 Data simulasi aktif — angka di bawah mencakup data uji, bukan transaksi nyata.'), h('button', { class: 'chip sm', onclick: () => go('backup') }, 'Kelola Simulasi')));
+    const kpi = (i, l, v, sub, cl) => h('div', { class: 'kpi ' + cl }, h('span', { class: 'sci' }, ico(i, 22)), h('small', {}, l), h('b', {}, v), h('em', {}, ...sub));
+    m.append(h('div', { class: 'kpis' },
+      kpi('wallet', 'Omzet Hari Ini', rp(omT), [dlt(omT, omY), ' vs kemarin'], 'y'), kpi('orders', 'Pesanan Hari Ini', oT.length, [dlt(oT.length, oY.length), ' vs kemarin'], 'b'),
+      kpi('chart', 'Omzet 7 Hari', rp(w1), [dlt(w1, w0), ' vs minggu lalu'], 'g'), kpi('bell', 'Perlu Tindakan', nNew + nVer + nMsg, [nNew + ' pesanan · ' + nVer + ' bayar · ' + nMsg + ' pesan'], 'r')));
+    const cnt = s => os.filter(o => o.status === s).length;
+    m.append(panel('Alur Pesanan', h('div', { class: 'pipe' }, ST.slice(0, 5).map((s, i) => h('button', { class: 'ps ' + stCls(s), onclick: () => { oFilter = s; go('orders') } }, h('b', {}, cnt(s)), h('span', {}, s), i < 4 ? h('i', { class: 'ar' }, '›') : null)))));
+    const g = h('div', { class: 'g2' });
+    g.append(panel('Omzet 7 Hari Terakhir', h('div', { class: 'ph2' }, h('b', {}, rp(w1)), dlt(w1, w0), h('small', {}, ' dibanding 7 hari sebelumnya')), vals.some(Boolean) ? barChart(days, vals, 'Omzet pesanan selesai 7 hari terakhir') : empty('Belum ada pesanan selesai dalam 7 hari terakhir. Grafik dihitung dari pesanan berstatus Selesai.')));
+    const top = {}; vo.forEach(o => o.items.forEach(i => { top[i.name] = (top[i.name] || 0) + i.qty })); const tl = Object.entries(top).sort((a, b) => b[1] - a[1]).slice(0, 6), tm = tl[0] ? tl[0][1] : 1;
+    g.append(panel('Menu Terlaris', tl.length ? h('ol', { class: 'tp' }, tl.map(([n, q], i) => h('li', {}, h('em', {}, i + 1), h('span', {}, n), h('b', {}, q + ' pcs'), h('i', { style: `width:${Math.round(q / tm * 100)}%` })))) : empty('Belum ada pesanan.')));
+    m.append(g);
+    const hrs = Array(24).fill(0); vo.forEach(o => { hrs[+new Date(o.time).toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Asia/Jakarta' }) % 24]++ }); const hs = hrs.slice(15, 24), hm = Math.max(...hs, 1), pk = hs.indexOf(hm) + 15;
+    const split = (a, b, la, lb) => { const t = a + b || 1, pa = Math.round(a / t * 100); return h('div', { class: 'split' }, h('div', { class: 'sb' }, h('i', { style: `width:${pa}%` })), h('div', { class: 'sl' }, h('span', {}, la + ' ', h('b', {}, a + ' (' + pa + '%)')), h('span', {}, lb + ' ', h('b', {}, b + ' (' + (100 - pa) + '%)')))) };
+    const g3 = h('div', { class: 'g3' });
+    g3.append(panel('Jam Sibuk', vo.length ? h('div', {}, h('div', { class: 'hb' }, hs.map((v, i) => h('div', { class: 'hc' + (i + 15 === pk ? ' pk' : '') }, h('i', { style: `height:${Math.max(4, Math.round(v / hm * 100))}%`, title: v + ' pesanan' }), h('small', {}, String(i + 15).padStart(2, '0'))))), h('p', { class: 'mu tiny' }, 'Paling ramai pukul ' + String(pk).padStart(2, '0') + '.00 (' + hm + ' pesanan, semua data).')) : empty('Belum ada data.')));
+    g3.append(panel('Pembayaran & Pengambilan', vo.length ? h('div', {}, split(vo.filter(o => o.pay === 'QRIS').length, vo.filter(o => o.pay !== 'QRIS').length, 'QRIS', 'Tunai'), split(vo.filter(o => o.method !== 'Delivery').length, vo.filter(o => o.method === 'Delivery').length, 'Ambil', 'Delivery'), h('p', { class: 'mu tiny' }, 'Rata-rata nilai pesanan ' + rp(Math.round(sum(vo) / vo.length)))) : empty('Belum ada data.')));
+    g3.append(panel('Ringkasan Toko', h('ul', { class: 'sm' }, h('li', {}, 'Menu aktif', h('b', {}, ps.filter(p => p.on).length + '/' + ps.length)), h('li', {}, 'Promo berlaku', h('b', {}, ps.filter(p => p.on && promoOn(p)).length)), h('li', {}, 'Total pesanan', h('b', {}, os.length)), h('li', {}, 'Pesanan selesai', h('b', {}, os.filter(done).length)), h('li', {}, 'Dibatalkan', h('b', {}, cnt('Dibatalkan'))), h('li', {}, 'Total pesan inbox', h('b', {}, ms.length)))));
+    m.append(g3);
+    const rec = os.slice().sort((a, b) => b.time.localeCompare(a.time)).slice(0, 6);
+    const ev = []; os.forEach(o => { ev.push({ t: o.time, e: '🛒', x: 'Pesanan ' + o.no + ' dari ' + o.name, s: rp(o.total) }); (o.hist || []).slice(1).forEach(hh => ev.push({ t: hh.t, e: hh.s === 'Selesai' ? '✅' : hh.s === 'Dibatalkan' ? '⛔' : '🔄', x: o.no + ' → ' + hh.s, s: o.name })) }); ms.forEach(x => ev.push({ t: x.time, e: '✉️', x: 'Pesan dari ' + x.name, s: x.text.slice(0, 50) }));
+    ev.sort((a, b) => b.t.localeCompare(a.t));
+    const g4 = h('div', { class: 'g2' });
+    g4.append(panel('Pesanan Terbaru', h('div', { class: 'rl' }, rec.length ? rec.map(o => h('button', { class: 'ro', onclick: () => { go('orders'); orderD(o.id) } }, h('span', { class: 'av2' }, (o.name || '?').slice(0, 1).toUpperCase()), h('span', { class: 'rm' }, h('b', {}, o.name, o.sim ? h('i', { class: 'simt' }, 'SIM') : null), h('small', {}, o.no + ' · ' + ago(o.time) + ' · ' + (o.method === 'Delivery' ? 'Delivery' : 'Ambil'))), h('span', { class: 'rr' }, h('b', {}, rp(o.total)), pill(o.status)))) : [empty('Belum ada pesanan. Pesanan dari website akan muncul di sini (pada browser yang sama).')]), rec.length ? h('div', { class: 'row end tiny' }, h('button', { class: 'chip sm', onclick: () => { oFilter = 'Semua'; go('orders') } }, 'Lihat semua ›')) : null));
+    g4.append(panel('Aktivitas Terbaru', ev.length ? h('ul', { class: 'feed' }, ev.slice(0, 8).map(x => h('li', {}, h('span', { class: 'fe' }, x.e), h('span', {}, h('b', {}, x.x), h('small', {}, x.s + ' · ' + ago(x.t)))))) : empty('Belum ada aktivitas.')));
+    m.append(g4);
   }
-
   /* ---------- PESANAN ---------- */
   function ordTable(list) {
     return h('div', { class: 'tw' }, h('table', { class: 'rk' }, h('thead', {}, h('tr', {}, ['No', 'Waktu', 'Pelanggan', 'Total', 'Bayar', 'Status', ''].map(t => h('th', {}, t)))),
-      h('tbody', {}, list.map(o => h('tr', {}, h('td', { 'data-label': 'No' }, h('b', {}, o.no)), h('td', { 'data-label': 'Waktu' }, fmt(o.time)), h('td', { 'data-label': 'Pelanggan' }, o.name), h('td', { 'data-label': 'Total' }, rp(o.total)), h('td', { 'data-label': 'Bayar' }, o.payStatus || o.pay), h('td', { 'data-label': 'Status' }, pill(o.status)), h('td', {}, h('button', { class: 'btn gold sm', onclick: () => orderD(o.id) }, 'Detail')))))));
+      h('tbody', {}, list.map(o => h('tr', {}, h('td', { 'data-label': 'No' }, h('b', {}, o.no), o.sim ? h('i', { class: 'simt' }, 'SIM') : null), h('td', { 'data-label': 'Waktu' }, fmt(o.time)), h('td', { 'data-label': 'Pelanggan' }, o.name), h('td', { 'data-label': 'Total' }, rp(o.total)), h('td', { 'data-label': 'Bayar' }, o.payStatus || o.pay), h('td', { 'data-label': 'Status' }, pill(o.status)), h('td', {}, h('button', { class: 'btn gold sm', onclick: () => orderD(o.id) }, 'Detail')))))));
   }
   function ordersV(m) {
     const all = orders().sort((a, b) => b.time.localeCompare(a.time)), fl = ['Semua', ...ST];
@@ -104,7 +140,7 @@
   }
   function orderD(id) {
     const o = orders().find(x => x.id === id); if (!o) return;
-    const set = (patch, msgT) => { const l = orders(), x = l.find(i => i.id === id); Object.assign(x, patch); if (Repo.save('orders', l)) { toast(msgT || 'Tersimpan'); render(); orderD(id) } };
+    const set = (patch, msgT) => { const l = orders(), x = l.find(i => i.id === id); Object.assign(x, patch); if (patch.status) (x.hist = x.hist || [{ t: x.time, s: 'Baru' }]).push({ t: new Date().toISOString(), s: patch.status }); if (Repo.save('orders', l)) { toast(msgT || 'Tersimpan'); render(); orderD(id) } };
     const nx = NEXT[o.status], sel = h('select', { 'aria-label': 'Ubah status' }, ST.map(s => h('option', { value: s, selected: s === o.status ? '' : null }, s)));
     const delivery = o.method === 'Delivery', waMsg = `Halo ${o.name}, pesanan ${o.no} di ${sett().name} statusnya: ${o.status}${delivery && o.status === 'Siap Diambil' ? ' (siap diantar)' : ''}. Total ${rp(o.total)}. Terima kasih!`;
     modal('Pesanan ' + o.no, h('div', { class: 'kv' }, h('span', {}, 'Status'), pill(o.status), h('span', {}, 'Waktu'), h('b', {}, fmt(o.time)), h('span', {}, 'Pelanggan'), h('b', {}, o.name), h('span', {}, 'WhatsApp'), h('b', {}, o.phone), h('span', {}, 'Pengambilan'), h('b', {}, delivery ? 'Delivery' : 'Ambil di tempat'), delivery ? h('span', {}, 'Alamat') : null, delivery ? h('b', {}, o.address || '-') : null, h('span', {}, 'Pembayaran'), h('b', {}, (o.pay === 'QRIS' ? 'QRIS' : 'Tunai') + ' · ' + (o.payStatus || '-')), h('span', {}, 'Catatan'), h('b', {}, o.note || '-')),
@@ -205,8 +241,7 @@
     const a = h('input', { type: 'date', value: rFrom, 'aria-label': 'Dari' }), b = h('input', { type: 'date', value: rTo, 'aria-label': 'Sampai' });
     const os = orders().filter(o => { const d = dayOf(o.time); return d >= rFrom && d <= rTo }), vo = os.filter(valid), dn = os.filter(done), omz = dn.reduce((x, o) => x + o.total, 0);
     const ap = () => { if (a.value && b.value && a.value <= b.value) { rFrom = a.value; rTo = b.value; render() } else toast('Rentang tanggal tidak valid', 1) };
-    m.append(h('div', { class: 'tb' }, h('label', { class: 'dt' }, 'Dari', a), h('label', { class: 'dt' }, 'Sampai', b), h('button', { class: 'btn red sm', onclick: ap }, 'Terapkan'), h('button', { class: 'chip sm', onclick: () => { rFrom = lastDays(7)[0]; rTo = today(); render() } }, '7 hari'), h('button', { class: 'chip sm', onclick: () => { rFrom = lastDays(30)[0]; rTo = today(); render() } }, '30 hari'),
-      h('button', { class: 'chip sm', onclick: () => csv(os) }, '⇩ Ekspor CSV')));
+    m.append(h('div', { class: 'rtb' }, h('div', { class: 'rd' }, h('label', {}, 'Dari', a), h('label', {}, 'Sampai', b)), h('div', { class: 'rpb' }, h('button', { class: 'btn red sm', onclick: ap }, 'Terapkan'), h('button', { class: 'chip sm', onclick: () => { rFrom = lastDays(7)[0]; rTo = today(); render() } }, '7 hari'), h('button', { class: 'chip sm', onclick: () => { rFrom = lastDays(30)[0]; rTo = today(); render() } }, '30 hari'), h('button', { class: 'chip sm', onclick: () => csv(os) }, '⇩ CSV'))));
     m.append(h('div', { class: 'sg' }, stat('orders', 'Pesanan', vo.length, os.length - vo.length + ' dibatalkan', 'b'), stat('check', 'Selesai', dn.length, '', 'g'), stat('wallet', 'Omzet (Selesai)', rp(omz), '', 'y'), stat('chart', 'Rata-rata / pesanan', rp(dn.length ? Math.round(omz / dn.length) : 0), '', 'r')));
     const byDay = {}; dn.forEach(o => { const d = dayOf(o.time); byDay[d] = (byDay[d] || 0) + o.total }); const dl = Object.entries(byDay).sort();
     const byMenu = {}; vo.forEach(o => o.items.forEach(i => { const c = byMenu[i.name] || (byMenu[i.name] = { q: 0, v: 0 }); c.q += i.qty; c.v += i.qty * i.price })); const ml = Object.entries(byMenu).sort((x, y) => y[1].q - x[1].q);
@@ -241,6 +276,7 @@
 
   /* ---------- BACKUP ---------- */
   function backupV(m) {
+    simPanel(m);
     const used = (() => { let n = 0; try { for (const k of Object.keys(localStorage)) if (k.startsWith(K)) n += (localStorage[k].length + k.length) * 2 } catch (e) { } return n })();
     m.append(panel('Backup & Pemulihan', h('p', { class: 'mu' }, 'Semua data (menu, pesanan, inbox, pengaturan) hanya ada di browser ini. Lakukan backup rutin. Pemakaian penyimpanan: ' + (used / 1024).toFixed(1) + ' KB dari ± 5.000 KB.'),
       h('div', { class: 'row' }, h('button', { class: 'btn red', onclick: () => { const d = { app: 'martabak-masbejo', schema: SCHEMA, exported: new Date().toISOString() }; ['products', 'settings', 'orders', 'messages'].forEach(n => d[n] = Repo.get(n)); download(`backup-masbejo-${today()}.json`, JSON.stringify(d, null, 1), 'application/json'); toast('Backup diunduh') } }, '⇩ Unduh Backup Lengkap')),
@@ -259,6 +295,60 @@
       confirmD('Pulihkan backup?', `Data saat ini diganti: ${d.products.length} menu, ${d.orders.length} pesanan, ${d.messages.length} pesan. Disarankan unduh backup dulu.`, 'Pulihkan', () => { let ok = true; ['products', 'settings', 'orders', 'messages'].forEach(n => { if (ok) ok = Repo.save(n, d[n]) }); toast(ok ? 'Backup dipulihkan' : 'Gagal memulihkan', !ok); render() });
     };
     fr.readAsText(file);
+  }
+
+  /* ---------- SIMULASI (data uji, ditandai sim:true & bisa dihapus) ---------- */
+  const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1)), pick = a => a[rnd(0, a.length - 1)];
+  const NAMES = ['Budi Santoso', 'Siti Aminah', 'Rina Wijaya', 'Agus Pratama', 'Dewi Lestari', 'Fajar Nugroho', 'Maya Putri', 'Dimas Saputra', 'Intan Permata', 'Rizky Ramadhan', 'Ayu Ningsih', 'Hendra Kusuma', 'Lina Marlina', 'Yoga Prasetyo', 'Nadia Safitri', 'Bayu Aji', 'Citra Dewi', 'Eko Prabowo', 'Wulan Sari', 'Tono Hartono', 'Putri Anggraini', 'Joko Susilo'];
+  const NOTES = ['', '', '', 'Tolong dipotong 8', 'Jangan terlalu manis', 'Extra keju ya', 'Bungkus rapi, buat hadiah', 'Telur bebek kalau ada', 'Tanpa cabai', 'Ambil jam 8 malam', 'Pedas level 2', 'Pakai toping tambahan'];
+  const ADDR = ['Jl. Melati No. 12, RT 03/05', 'Perum Griya Asri Blok C4', 'Jl. Kenanga 7 (depan masjid)', 'Kos Putra Mawar, Jl. Anggrek 21', 'Jl. Pahlawan No. 88'];
+  const MSGS = ['Kak, hari ini buka sampai jam berapa?', 'Bisa pesan 10 box untuk acara besok sore?', 'Ada promo untuk pembelian banyak?', 'Martabak telur spesial masih ada kak?', 'Bisa delivery ke perumahan Griya Asri?', 'Terima kasih, martabaknya enak banget!', 'Apakah bisa request topping oreo + keju?', 'Pesanan saya sudah sampai mana ya?', 'Bisa bayar pakai QRIS saat ambil?', 'Ada menu tanpa telur?'];
+  const iso = (day, h, mi) => new Date(`${day}T${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}:00+07:00`).toISOString();
+  const phone = () => '08' + pick(['12', '13', '21', '52', '57', '78', '81', '95']) + String(rnd(1e6, 9999999));
+  function mkOrder(time, status, seq, day) {
+    const act = prods().filter(p => p.on && p.stock), n = rnd(1, 3), its = []; for (let i = 0; i < n; i++) { const p = pick(act); if (!its.some(x => x.id === p.id)) its.push({ id: p.id, name: p.name, qty: rnd(1, 3), price: price(p) }) }
+    const total = its.reduce((a, i) => a + i.price * i.qty, 0), qris = Math.random() < .55, dl = Math.random() < .28, d = day.replace(/-/g, '');
+    const pst = status === 'Selesai' ? 'Lunas' : status === 'Dibatalkan' ? (qris ? 'Menunggu Pembayaran' : 'Belum Dibayar') : (qris ? (status === 'Baru' ? 'Menunggu Pembayaran' : 'Lunas') : 'Belum Dibayar');
+    const o = { id: 'sim' + uid() + seq, no: `MB-${d}-${String(900 + seq).padStart(3, '0')}`, time, name: pick(NAMES), phone: phone(), items: its, total, pay: qris ? 'QRIS' : 'Tunai', payStatus: pst, status, note: pick(NOTES), method: dl ? 'Delivery' : 'Ambil', address: dl ? pick(ADDR) : '', demo: true, sim: true };
+    const flow = ['Baru', 'Dikonfirmasi', 'Diproses', 'Siap Diambil', 'Selesai'], t0 = new Date(time).getTime(), end = Math.min(Date.now(), t0 + 25 * 6e4);
+    if (status === 'Dibatalkan') o.hist = [{ t: time, s: 'Baru' }, { t: new Date(Math.min(Date.now(), t0 + 6e5)).toISOString(), s: 'Dibatalkan' }];
+    else { const k = flow.indexOf(status); o.hist = flow.slice(0, k + 1).map((s, i) => ({ t: new Date(t0 + (end - t0) * i / Math.max(1, k)).toISOString(), s })) }
+    return o;
+  }
+  function genSim() {
+    const days = lastDays(14), td = today(), nowH = +new Date().toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Asia/Jakarta' }) % 24, out = [], mm = []; let seq = 0;
+    days.forEach(day => {
+      const isT = day === td, wk = [0, 6].includes(new Date(day + 'T12:00:00+07:00').getDay()), cnt = isT ? 14 : wk ? rnd(26, 34) : rnd(16, 26), tl = [];
+      for (let i = 0; i < cnt; i++) { let t; if (isT) { const mx = Date.now() - 3e5, mn = Math.max(new Date(day + 'T00:00:00+07:00').getTime(), mx - 6 * 36e5); t = new Date(mn + Math.random() * Math.max(1, mx - mn)).toISOString() } else { const hh = pick([17, 18, 18, 19, 19, 19, 20, 20, 21, 21, 22, 23]); t = iso(day, hh, rnd(0, 59)) } tl.push(t) }
+      tl.sort();
+      tl.forEach((t, i) => { let st = 'Selesai'; if (isT) { const left = tl.length - 1 - i; st = left < 4 ? 'Baru' : left < 6 ? 'Dikonfirmasi' : left < 8 ? 'Diproses' : left < 9 ? 'Siap Diambil' : (Math.random() < .08 ? 'Dibatalkan' : 'Selesai') } else if (Math.random() < .07) st = 'Dibatalkan'; out.push(mkOrder(t, st, ++seq, day)) });
+    });
+    const v = out.find(o => o.status === 'Dikonfirmasi' && o.pay === 'QRIS') || out.find(o => o.status === 'Dikonfirmasi'); if (v) { v.pay = 'QRIS'; v.payStatus = 'Menunggu Verifikasi' }
+    for (let i = 0; i < 9; i++) { const nm = pick(NAMES), t = i < 3 ? new Date(Date.now() - rnd(2, 90) * 6e4).toISOString() : new Date(Date.now() - rnd(3, 120) * 36e5).toISOString(); mm.push({ id: 'sim' + uid() + i, name: nm, phone: phone(), text: MSGS[i % MSGS.length], time: t, status: i < 4 ? 'Baru' : 'Dibaca', sim: true }) }
+    return { out, mm };
+  }
+  const simCount = () => ({ o: orders().filter(o => o.sim).length, m: msgs().filter(x => x.sim).length });
+  function addSim() { const { out, mm } = genSim(), o = orders(), m = msgs(); if (Repo.save('orders', o.concat(out)) && Repo.save('messages', m.concat(mm))) { toast(`Simulasi dibuat: ${out.length} pesanan, ${mm.length} pesan`); render() } }
+  function clearSim() { stopLive(); const ok = Repo.save('orders', orders().filter(o => !o.sim)) && Repo.save('messages', msgs().filter(x => !x.sim)); if (ok) { toast('Data simulasi dihapus. Data asli tidak tersentuh.'); render() } }
+  let liveT = null;
+  function beep() { try { const a = new (window.AudioContext || window.webkitAudioContext)(), o = a.createOscillator(), g = a.createGain(); o.connect(g); g.connect(a.destination); o.frequency.value = 880; g.gain.setValueAtTime(.08, a.currentTime); g.gain.exponentialRampToValueAtTime(.001, a.currentTime + .25); o.start(); o.stop(a.currentTime + .25) } catch (e) { } }
+  function tick() {
+    const r = Math.random(), l = orders();
+    if (r < .5) { const o = mkOrder(new Date().toISOString(), 'Baru', rnd(100, 899), today()); o.hist = [{ t: o.time, s: 'Baru' }]; l.push(o); Repo.save('orders', l); toast('🛒 Pesanan baru ' + o.no + ' · ' + o.name + ' · ' + rp(o.total)) }
+    else if (r < .75) { const m = msgs(); m.push({ id: 'sim' + uid(), name: pick(NAMES), phone: phone(), text: pick(MSGS), time: new Date().toISOString(), status: 'Baru', sim: true }); Repo.save('messages', m); toast('✉️ Pesan baru masuk') }
+    else { const c = l.filter(o => o.sim && o.status === 'Baru' && o.pay === 'QRIS' && o.payStatus === 'Menunggu Pembayaran'); if (c.length) { const o = pick(c); o.payStatus = 'Menunggu Verifikasi'; Repo.save('orders', l); toast('💳 ' + o.name + ' mengirim bukti bayar (' + o.no + ')') } else { const m = msgs(); m.push({ id: 'sim' + uid(), name: pick(NAMES), phone: phone(), text: pick(MSGS), time: new Date().toISOString(), status: 'Baru', sim: true }); Repo.save('messages', m); toast('✉️ Pesan baru masuk') } }
+    beep(); if (!dlg.open && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) render(); else drawTabs();
+  }
+  function startLive() { if (liveT) return; live = true; liveT = setInterval(tick, 8000); tick(); drawTabs(); toast('Simulator live aktif: aktivitas baru tiap ±8 detik') }
+  function stopLive() { clearInterval(liveT); liveT = null; live = false; drawTabs() }
+  function simPanel(m) {
+    const c = simCount();
+    m.append(panel('🧪 Simulasi & Data Uji', h('p', { class: 'mu' }, 'Isi website dengan data contoh seolah sudah berjalan: pesanan 14 hari terakhir (minggu ini + minggu lalu sebagai pembanding; berbagai status & pembayaran), pesan masuk, dan notifikasi. Semua data uji bertanda SIM dan bisa dihapus tanpa menyentuh data asli. Data tersimpan hanya di browser ini.'),
+      h('p', {}, 'Saat ini: ', h('b', {}, c.o + ' pesanan simulasi'), ' dan ', h('b', {}, c.m + ' pesan simulasi'), '.'),
+      h('div', { class: 'row' }, h('button', { class: 'btn red', onclick: () => c.o ? confirmD('Tambah simulasi lagi?', 'Data simulasi yang ada akan ditambah satu set baru. Hapus dulu bila ingin mulai bersih.', 'Tambah', addSim, false) : addSim() }, '▶ Buat Data Simulasi'),
+        h('button', { class: 'btn ' + (live ? 'gold' : 'green'), onclick: () => { live ? stopLive() : startLive(); render() } }, live ? '■ Hentikan Simulator Live' : '⚡ Mulai Simulator Live'),
+        h('button', { class: 'btn dng', disabled: c.o + c.m ? null : '', onclick: () => confirmD('Hapus semua data simulasi?', 'Hanya data bertanda SIM yang dihapus. Pesanan & pesan asli tetap aman.', 'Hapus Simulasi', clearSim) }, 'Hapus Data Simulasi')),
+      h('small', { class: 'mu' }, 'Simulator live menambah pesanan/pesan/bukti bayar baru tiap ±8 detik selama halaman admin terbuka, lengkap dengan notifikasi dan bunyi.')));
   }
 
   /* ---------- Mulai ---------- */
