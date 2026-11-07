@@ -121,31 +121,95 @@ function dialogs() {
   $$('dialog').forEach(d => { let dn = false; d.addEventListener('mousedown', e => dn = e.target === d); d.addEventListener('click', e => { if (dn && e.target === d) d.close(); dn = false }) });
 }
 
+/* ---------- Offline & Auto-Update ----------
+   - Semua halaman + foto di-cache (sw.js) -> bisa dibuka tanpa internet.
+   - Saat online: cek pembaruan tiap 10 menit, saat tersambung kembali, dan saat app dibuka lagi.
+   - Deteksi perubahan file (ETag/Last-Modified) -> cache disegarkan -> halaman dimuat ulang otomatis
+     (ditunda bila pengguna sedang mengetik / dialog terbuka, lalu muncul tombol "Muat ulang"). */
+const APP_VER = '2.7';
+const mbUA = { reg: null, last: 0, check: () => Promise.resolve('unsupported') };
+function mbUpdater() {
+  const css = document.createElement('style');
+  css.textContent = '.offb{position:fixed;top:calc(8px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:200;padding:6px 14px;border-radius:99px;background:#3a2a10;color:#ffd66b;border:1px solid #ffc13d;font:600 12px/1.2 Outfit,system-ui,sans-serif;pointer-events:none;box-shadow:0 4px 16px #0008;white-space:nowrap}.upb{position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom));max-width:420px;margin:auto;z-index:210;display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:#1d130c;color:#fff;border:1px solid #ffc13d;font:500 13px/1.3 Outfit,system-ui,sans-serif;box-shadow:0 8px 30px #000a}.upb span{flex:1}.upb button{background:#ffc13d;color:#1d0c05;border:0;border-radius:10px;padding:8px 12px;font:700 13px Outfit,system-ui,sans-serif}';
+  document.head.append(css);
+  /* indikator offline */
+  let pill = null; const net = () => { const off = !navigator.onLine; if (off && !pill) { pill = h('div', { class: 'offb', role: 'status' }, '⚡ Offline — data tersimpan di perangkat'); document.body.append(pill) } if (!off && pill) { pill.remove(); pill = null } };
+  addEventListener('offline', net); addEventListener('online', () => { net(); toast('Tersambung kembali — memeriksa pembaruan…'); mbUA.check() }); net();
+  /* WhatsApp butuh internet: pesanan tetap tersimpan lokal */
+  document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('a[href*="wa.me"]'); if (a && !navigator.onLine) { e.preventDefault(); toast('Sedang offline. Pesanan tersimpan; kirim lewat WhatsApp saat internet tersambung.', 1) } }, true);
+  if (!('serviceWorker' in navigator)) return;
+  const hadCtl = !!navigator.serviceWorker.controller; let reloading = false, banner = null;
+  const busy = () => document.querySelector('dialog[open]') || /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '');
+  const reloadNow = () => { if (reloading) return; reloading = true; location.reload() };
+  const applyUpdate = () => {
+    if (reloading) return;
+    if (!busy()) { toast('Versi terbaru terpasang — memuat ulang…'); setTimeout(() => busy() ? applyUpdate() : reloadNow(), 1200); return }
+    if (!banner) { banner = h('div', { class: 'upb', role: 'alert' }, h('span', {}, 'Versi terbaru tersedia.'), h('button', { onclick: reloadNow }, 'Muat ulang')); document.body.append(banner) }
+    setTimeout(() => { if (!busy()) { banner && banner.remove(); banner = null; applyUpdate() } else applyUpdate() }, 6000);
+  };
+  /* sw.js baru aktif (skipWaiting + claim) -> terapkan. Abaikan instalasi pertama. */
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadCtl) applyUpdate() });
+  const FILES = ['index.html', 'admin.html', 'sw.js', 'script.js', 'admin.js', 'style.css', 'admin.css', 'manifest.json'];
+  const sig = async () => { const r = await Promise.all(FILES.map(f => fetch(f, { method: 'HEAD', cache: 'no-cache' }).then(x => x.ok ? f + '=' + (x.headers.get('etag') || x.headers.get('last-modified') || x.headers.get('content-length')) : f + '=?').catch(() => null))); return r.includes(null) ? null : r.join('|') };
+  mbUA.check = async (manual) => {
+    if (!navigator.onLine) { manual && toast('Offline — tidak bisa memeriksa pembaruan', 1); return 'offline' }
+    try {
+      const reg = mbUA.reg || await navigator.serviceWorker.getRegistration(); mbUA.reg = reg;
+      const s = await sig(), old = ls.get(K + 'sig'); mbUA.last = Date.now(); ls.set(K + 'lastCheck', String(mbUA.last));
+      if (s) ls.set(K + 'sig', s);
+      const changed = !!(s && old && s !== old);
+      if (reg) await reg.update().catch(() => { });
+      if (changed) { /* file berubah di server: segarkan cache lalu muat ulang bila sw.js tidak berganti */
+        const c = await caches.keys(); await Promise.all(c.filter(k => k.startsWith('mb-') && !k.endsWith('-font')).map(k => caches.delete(k)));
+        if (reg && reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
+        setTimeout(() => { if (!reloading) applyUpdate() }, 1500); return 'updated';
+      }
+      manual && toast('Sudah versi terbaru (v' + APP_VER + ')'); return 'current';
+    } catch (e) { manual && toast('Gagal memeriksa pembaruan', 1); return 'error' }
+  };
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => { mbUA.reg = r; r.addEventListener('updatefound', () => { const w = r.installing; w && w.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) toast('Memperbarui aplikasi…') }) }); setTimeout(() => mbUA.check(), 2500) }).catch(() => { }));
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - mbUA.last > 60000) mbUA.check() });
+  setInterval(() => { if (document.visibilityState === 'visible') mbUA.check() }, 10 * 6e4);
+}
 /* ---------- PWA (install) ---------- */
 function pwa() {
-  let dp = window.__dp || null, card = null; const btns = () => $$('.inst'), st = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
+  let dp = window.__dp || null, card = null; const btns = () => $$('.inst');
+  const st = ['standalone', 'minimal-ui', 'fullscreen'].some(m => matchMedia(`(display-mode: ${m})`).matches) || navigator.standalone === true || (document.referrer || '').startsWith('android-app://');
+  mbUpdater();
   if (st) { btns().forEach(b => b.hidden = true); return }
+  const ua = navigator.userAgent, touch = navigator.maxTouchPoints > 1;
+  const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && touch), and = /Android/.test(ua), inapp = /FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|TikTok|Snapchat|Twitter|GSA\/|; wv\)/.test(ua);
+  const deskMode = !ios && !and && navigator.maxTouchPoints > 0 && Math.min(screen.width, screen.height) <= 900 && /X11|Linux/.test(ua); /* Chrome HP dengan "Situs desktop" aktif: tidak bisa dipasang */
+  const canInstallHere = !!dp || ios || and;
   btns().forEach(b => b.hidden = false);
-  const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua), and = /Android/.test(ua), inapp = /FBAN|FBAV|Instagram|Line\/|MicroMessenger|TikTok|; wv\)/.test(ua);
-  const steps = inapp ? ['Ketuk menu ⋮ di pojok layar', 'Pilih "Buka di Chrome" atau "Buka di browser"', 'Lalu ketuk Pasang Aplikasi lagi'] : ios ? ['Ketuk tombol Bagikan di Safari', 'Pilih "Tambah ke Layar Utama"', 'Ketuk Tambah'] : and ? ['Ketuk menu ⋮ di Chrome', 'Pilih "Instal aplikasi" atau "Tambahkan ke layar utama"', 'Ketuk Instal'] : ['Buka di Chrome atau Edge', 'Klik ikon instal di ujung kanan bilah alamat', 'Klik Instal'];
+  const steps = inapp ? ['Ketuk menu ⋮ di pojok layar', 'Pilih "Buka di Chrome" atau "Buka di browser"', 'Lalu ketuk Pasang Aplikasi lagi']
+    : deskMode ? ['Ketuk menu ⋮ di Chrome', 'Matikan centang "Situs desktop"', 'Setelah halaman dimuat ulang, ketuk Pasang Aplikasi lagi atau menu ⋮ → "Instal aplikasi"']
+    : ios ? ['Buka di Safari (bukan di dalam aplikasi lain)', 'Ketuk tombol Bagikan', 'Pilih "Tambah ke Layar Utama", lalu Tambah']
+    : and ? ['Ketuk menu ⋮ di Chrome', 'Pilih "Instal aplikasi" atau "Tambahkan ke layar utama"', 'Ketuk Instal']
+    : ['Buka di Chrome atau Edge', 'Klik ikon instal di ujung kanan bilah alamat', 'Klik Instal'];
   const hideCard = () => { if (card) { card.remove(); card = null } };
   const guide = () => {
     let d = $('#pwaD'); if (!d) { d = h('dialog', { id: 'pwaD' }); document.body.append(d); let dn = false; d.addEventListener('mousedown', e => dn = e.target === d); d.addEventListener('click', e => { if (dn && e.target === d) d.close(); dn = false }) }
-    d.replaceChildren(h('div', { class: 'dc' }, h('button', { class: 'x', onclick: () => d.close(), 'aria-label': 'Tutup' }, '✕'), h('img', { class: 'pl', src: 'logo.png', width: 72, height: 72, alt: '' }), h('h3', {}, 'Pasang Aplikasi'), h('ol', { class: 'pst' }, steps.map(s => h('li', {}, s))), h('p', { class: 'info' }, 'Jika muncul "Tidak dapat membuka aplikasi" atau tombol tidak bereaksi: hapus ikon aplikasi lama dari layar utama, muat ulang halaman, lalu pasang lagi.'), h('button', { class: 'btn gold', onclick: () => d.close() }, 'Mengerti'))); d.showModal();
+    d.replaceChildren(h('div', { class: 'dc' }, h('button', { class: 'x', onclick: () => d.close(), 'aria-label': 'Tutup' }, '✕'), h('img', { class: 'pl', src: 'logo.png', width: 72, height: 72, alt: '' }), h('h3', {}, 'Pasang Aplikasi'), h('ol', { class: 'pst' }, steps.map(s => h('li', {}, s))), h('p', { class: 'info' }, 'Jika muncul "Tidak dapat membuka aplikasi" atau tombol tidak bereaksi: hapus ikon aplikasi lama dari layar utama, muat ulang halaman, lalu pasang lagi.'), h('button', { class: 'btn gold', onclick: () => d.close() }, 'Mengerti'))); if (!d.open) d.showModal();
   };
-  const go = async () => { if (!dp) { guide(); return } try { dp.prompt(); const r = await dp.userChoice; if (r.outcome === 'accepted') btns().forEach(b => b.hidden = true) } catch (e) { guide() } dp = null; window.__dp = null; hideCard() };
+  /* prompt() hanya boleh dipakai sekali per event; setelah itu tombol menampilkan panduan manual sampai Chrome mengirim event baru */
+  const go = async () => {
+    if (!dp) { hideCard(); guide(); return }
+    const e = dp; dp = null; window.__dp = null; hideCard();
+    try { await e.prompt(); const r = await e.userChoice; if (r && r.outcome === 'accepted') btns().forEach(b => b.hidden = true) } catch (err) { guide() }
+  };
   btns().forEach(b => b.onclick = go);
   const offer = () => {
-    if (card || !dp || +ls.get(K + 'pwaNo') > Date.now()) return;
+    if (card || !(dp || (ios && !inapp)) || +ls.get(K + 'pwaNo') > Date.now()) return;
+    const wait = Math.max(1500, (document.getElementById('loader') ? 4800 : 3000) - performance.now()); /* jangan menimpa loading screen */
     setTimeout(() => {
-      if (card || !dp) return; const adm = document.body.dataset.page === 'admin';
-      card = h('div', { class: 'pwa' }, h('img', { src: 'logo.png', width: 56, height: 56, alt: '' }), h('div', {}, h('b', {}, adm ? 'Pasang Admin Mas Bejo' : 'Pasang Aplikasi Mas Bejo'), h('small', {}, 'Buka lebih cepat dari layar utama, tampil layar penuh.')), h('button', { class: 'btn gold sm', onclick: go }, 'Pasang'), h('button', { class: 'pwx', onclick: () => { ls.set(K + 'pwaNo', Date.now() + 3 * 864e5); hideCard() }, 'aria-label': 'Nanti' }, '✕'));
+      if (card || !(dp || (ios && !inapp)) || $('dialog[open]')) return; const adm = document.body.dataset.page === 'admin';
+      card = h('div', { class: 'pwa', role: 'dialog', 'aria-label': 'Pasang aplikasi' }, h('img', { src: 'logo.png', width: 56, height: 56, alt: '' }), h('div', {}, h('b', {}, adm ? 'Pasang Admin Mas Bejo' : 'Pasang Aplikasi Mas Bejo'), h('small', {}, 'Buka lebih cepat dari layar utama, tampil layar penuh.')), h('button', { class: 'btn gold sm', onclick: go }, 'Pasang'), h('button', { class: 'pwx', onclick: () => { ls.set(K + 'pwaNo', Date.now() + 3 * 864e5); hideCard() }, 'aria-label': 'Nanti' }, '✕'));
       document.body.append(card);
-    }, 3600);
+    }, wait);
   };
   addEventListener('beforeinstallprompt', e => { e.preventDefault(); dp = e; window.__dp = e; offer() });
-  addEventListener('appinstalled', () => { btns().forEach(b => b.hidden = true); hideCard() });
+  addEventListener('appinstalled', () => { dp = null; window.__dp = null; btns().forEach(b => b.hidden = true); hideCard(); ls.del(K + 'pwaNo') });
   offer();
 }
 pwa();

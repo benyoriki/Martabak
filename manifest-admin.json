@@ -1,1 +1,25 @@
-{"id":"admin.html","name":"Admin Martabak Mas Bejo","short_name":"Admin Mas Bejo","lang":"id","start_url":"admin.html","scope":"./","display":"standalone","display_override":["standalone","minimal-ui"],"background_color":"#0f0a07","theme_color":"#e11d2e","prefer_related_applications":false,"icons":[{"src":"favicon.png?v=11","sizes":"192x192","type":"image/png","purpose":"any"},{"src":"icon-512.png?v=11","sizes":"512x512","type":"image/png","purpose":"any"},{"src":"icon-maskable.png?v=11","sizes":"512x512","type":"image/png","purpose":"maskable"}]}
+{
+  "id": "admin.html",
+  "name": "Admin Martabak Mas Bejo",
+  "short_name": "Admin Mas Bejo",
+  "description": "Dashboard admin pesanan Martabak Mas Bejo",
+  "lang": "id",
+  "dir": "ltr",
+  "start_url": "admin.html",
+  "scope": "admin.html",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#100905",
+  "theme_color": "#100905",
+  "categories": ["business", "productivity"],
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "favicon.png?v=11", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png?v=11", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable.png?v=11", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Pesanan", "url": "admin.html#orders", "icons": [{ "src": "favicon.png?v=11", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Laporan", "url": "admin.html#report", "icons": [{ "src": "favicon.png?v=11", "sizes": "192x192", "type": "image/png" }] }
+  ]
+}

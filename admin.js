@@ -12,7 +12,7 @@
   const dayOf = t => new Date(t).toLocaleDateString('sv', { timeZone: 'Asia/Jakarta' });
   const ico = (id, s = 20) => { const n = 'http://www.w3.org/2000/svg', v = document.createElementNS(n, 'svg'), u = document.createElementNS(n, 'use'); v.setAttribute('width', s); v.setAttribute('height', s); v.setAttribute('class', 'ico'); u.setAttribute('href', '#i-' + id); v.append(u); return v };
   const main = $('#main'), dlg = $('#dlg');
-  let tab = 'dash', oFilter = 'Semua', oQ = '', mQ = '', rFrom = '', rTo = '', openMsg = null;
+  let tab = 'dash', oFilter = 'Semua', oLimit = 40, oQ = '', mQ = '', rFrom = '', rTo = '', openMsg = null;
   const orders = () => Repo.get('orders'), prods = () => Repo.get('products').sort((a, b) => a.order - b.order), msgs = () => Repo.get('messages'), sett = () => Repo.get('settings');
   const valid = o => o.status !== 'Dibatalkan', done = o => o.status === 'Selesai';
   const stCls = s => ({ 'Baru': 'b', 'Dikonfirmasi': 'c', 'Diproses': 'p', 'Siap Diambil': 'r', 'Selesai': 'g', 'Dibatalkan': 'x' }[s] || 'b');
@@ -20,11 +20,12 @@
   const num = v => Math.max(0, Math.round(+String(v).replace(/[^\d.]/g, '')) || 0);
 
   /* ---------- Login ---------- */
-  const authed = () => { try { return sessionStorage.getItem('mbAdmin') === '1' } catch (e) { return false } };
-  const enter = () => { try { sessionStorage.setItem('mbAdmin', '1') } catch (e) { } start() };
+  /* sesi 12 jam di localStorage: app PWA yang ditutup Android tidak memaksa login ulang */
+  const authed = () => { try { return sessionStorage.getItem('mbAdmin') === '1' || +ls.get(K + 'adminUntil') > Date.now() } catch (e) { return false } };
+  const enter = () => { try { sessionStorage.setItem('mbAdmin', '1') } catch (e) { } ls.set(K + 'adminUntil', Date.now() + 12 * 36e5); start() };
   $('#demoA').onclick = enter;
   $('#lf').onsubmit = e => { e.preventDefault(); const f = new FormData(e.target); if (f.get('u').trim().toLowerCase() === 'admin@masbejo.demo' && f.get('p') === 'admin123') enter(); else toast('Email atau password salah', 1) };
-  $('#out').onclick = () => { try { sessionStorage.removeItem('mbAdmin') } catch (e) { } location.href = 'index.html' };
+  $('#out').onclick = () => { try { sessionStorage.removeItem('mbAdmin') } catch (e) { } ls.del(K + 'adminUntil'); location.href = 'index.html' };
   dialogsInit();
   function dialogsInit() { let dn = false; dlg.addEventListener('mousedown', e => dn = e.target === dlg); dlg.addEventListener('click', e => { if (dn && e.target === dlg) dlg.close(); dn = false }) }
 
@@ -47,7 +48,7 @@
   }
   function moreD() { modal('Menu Lainnya', h('div', { class: 'more' }, TABS.filter(t => !PRIMARY.includes(t[0])).map(([k, t, i]) => h('button', { class: k === tab ? 'on' : '', onclick: () => { dlg.close(); go(k) } }, ico(i, 26), h('span', {}, t))))) }
   mq.addEventListener('change', drawTabs);
-  function go(k) { tab = k; location.hash = k; render(); window.scrollTo(0, 0) }
+  function go(k) { tab = k; if (k === 'orders') oLimit = 40; location.hash = k; render(); window.scrollTo(0, 0) }
   function render() {
     $('#ttl').textContent = TABS.find(t => t[0] === tab)[1]; drawTabs(); $('#np').hidden = true;
     main.replaceChildren(); ({ dash, orders: ordersV, menu: menuV, promo: promoV, inbox: inboxV, cust: custV, report: reportV, settings: settingsV, backup: backupV })[tab](main);
@@ -110,10 +111,10 @@
     const top = {}; vo.forEach(o => o.items.forEach(i => { top[i.name] = (top[i.name] || 0) + i.qty })); const tl = Object.entries(top).sort((a, b) => b[1] - a[1]).slice(0, 6), tm = tl[0] ? tl[0][1] : 1;
     g.append(panel('Menu Terlaris', tl.length ? h('ol', { class: 'tp' }, tl.map(([n, q], i) => h('li', {}, h('em', {}, i + 1), h('span', {}, n), h('b', {}, q + ' pcs'), h('i', { style: `width:${Math.round(q / tm * 100)}%` })))) : empty('Belum ada pesanan.')));
     m.append(g);
-    const hrs = Array(24).fill(0); vo.forEach(o => { hrs[+new Date(o.time).toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Asia/Jakarta' }) % 24]++ }); const hs = hrs.slice(15, 24), hm = Math.max(...hs, 1), pk = hs.indexOf(hm) + 15;
+    const hrs = Array(24).fill(0); vo.forEach(o => { hrs[+new Date(o.time).toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Asia/Jakarta' }) % 24]++ }); const used = hrs.map((v, i) => v ? i : -1).filter(i => i >= 0), lo = Math.max(0, Math.min(S.open < S.close ? S.open : 0, ...(used.length ? used : [S.open]))), hi = Math.min(23, Math.max(S.close > S.open ? S.close - 1 : 23, ...(used.length ? used : [lo]))), hs = hrs.slice(lo, hi + 1), hm = Math.max(...hs, 1), pk = hs.indexOf(hm) + lo;
     const split = (a, b, la, lb) => { const t = a + b || 1, pa = Math.round(a / t * 100); return h('div', { class: 'split' }, h('div', { class: 'sb' }, h('i', { style: `width:${pa}%` })), h('div', { class: 'sl' }, h('span', {}, la + ' ', h('b', {}, a + ' (' + pa + '%)')), h('span', {}, lb + ' ', h('b', {}, b + ' (' + (100 - pa) + '%)')))) };
     const g3 = h('div', { class: 'g3' });
-    g3.append(panel('Jam Sibuk', vo.length ? h('div', {}, h('div', { class: 'hb' }, hs.map((v, i) => h('div', { class: 'hc' + (i + 15 === pk ? ' pk' : '') }, h('i', { style: `height:${Math.max(4, Math.round(v / hm * 100))}%`, title: v + ' pesanan' }), h('small', {}, String(i + 15).padStart(2, '0'))))), h('p', { class: 'mu tiny' }, 'Paling ramai pukul ' + String(pk).padStart(2, '0') + '.00 (' + hm + ' pesanan, semua data).')) : empty('Belum ada data.')));
+    g3.append(panel('Jam Sibuk', vo.length ? h('div', {}, h('div', { class: 'hb' }, hs.map((v, i) => h('div', { class: 'hc' + (i + lo === pk ? ' pk' : '') }, h('i', { style: `height:${Math.max(4, Math.round(v / hm * 100))}%`, title: v + ' pesanan' }), h('small', {}, String(i + lo).padStart(2, '0'))))), h('p', { class: 'mu tiny' }, 'Paling ramai pukul ' + String(pk).padStart(2, '0') + '.00 (' + hm + ' pesanan, semua data).')) : empty('Belum ada data.')));
     g3.append(panel('Pembayaran & Pengambilan', vo.length ? h('div', {}, split(vo.filter(o => o.pay === 'QRIS').length, vo.filter(o => o.pay !== 'QRIS').length, 'QRIS', 'Tunai'), split(vo.filter(o => o.method !== 'Delivery').length, vo.filter(o => o.method === 'Delivery').length, 'Ambil', 'Delivery'), h('p', { class: 'mu tiny' }, 'Rata-rata nilai pesanan ' + rp(Math.round(sum(vo) / vo.length)))) : empty('Belum ada data.')));
     g3.append(panel('Ringkasan Toko', h('ul', { class: 'sm' }, h('li', {}, 'Menu aktif', h('b', {}, ps.filter(p => p.on).length + '/' + ps.length)), h('li', {}, 'Promo berlaku', h('b', {}, ps.filter(p => p.on && promoOn(p)).length)), h('li', {}, 'Total pesanan', h('b', {}, os.length)), h('li', {}, 'Pesanan selesai', h('b', {}, os.filter(done).length)), h('li', {}, 'Dibatalkan', h('b', {}, cnt('Dibatalkan'))), h('li', {}, 'Total pesan inbox', h('b', {}, ms.length)))));
     m.append(g3);
@@ -127,15 +128,17 @@
   }
   /* ---------- PESANAN ---------- */
   function ordTable(list) {
-    return h('div', { class: 'tw' }, h('table', { class: 'rk' }, h('thead', {}, h('tr', {}, ['No', 'Waktu', 'Pelanggan', 'Total', 'Bayar', 'Status', ''].map(t => h('th', {}, t)))),
-      h('tbody', {}, list.map(o => h('tr', {}, h('td', { 'data-label': 'No' }, h('b', {}, o.no), o.sim ? h('i', { class: 'simt' }, 'SIM') : null), h('td', { 'data-label': 'Waktu' }, fmt(o.time)), h('td', { 'data-label': 'Pelanggan' }, o.name), h('td', { 'data-label': 'Total' }, rp(o.total)), h('td', { 'data-label': 'Bayar' }, o.payStatus || o.pay), h('td', { 'data-label': 'Status' }, pill(o.status)), h('td', {}, h('button', { class: 'btn gold sm', onclick: () => orderD(o.id) }, 'Detail')))))));
+    const shown = list.slice(0, oLimit);
+    return h('div', {}, h('div', { class: 'tw' }, h('table', { class: 'rk' }, h('thead', {}, h('tr', {}, ['No', 'Waktu', 'Pelanggan', 'Total', 'Bayar', 'Status', ''].map(t => h('th', {}, t)))),
+      h('tbody', {}, shown.map(o => h('tr', {}, h('td', { 'data-label': 'No' }, h('b', {}, o.no), o.sim ? h('i', { class: 'simt' }, 'SIM') : null), h('td', { 'data-label': 'Waktu' }, fmt(o.time)), h('td', { 'data-label': 'Pelanggan' }, o.name), h('td', { 'data-label': 'Total' }, rp(o.total)), h('td', { 'data-label': 'Bayar' }, o.payStatus || o.pay), h('td', { 'data-label': 'Status' }, pill(o.status)), h('td', {}, h('button', { class: 'btn gold sm', onclick: () => orderD(o.id) }, 'Detail'))))))),
+      list.length > oLimit ? h('div', { class: 'row end' }, h('small', { class: 'mu' }, `Menampilkan ${shown.length} dari ${list.length} pesanan`), h('button', { class: 'chip sm', onclick: () => { oLimit += 60; render() } }, 'Muat lebih banyak')) : null);
   }
   function ordersV(m) {
     const all = orders().sort((a, b) => b.time.localeCompare(a.time)), fl = ['Semua', ...ST];
     const list = all.filter(o => (oFilter === 'Semua' || o.status === oFilter) && (oQ === '' || (o.no + o.name + o.phone).toLowerCase().includes(oQ)));
-    const q = h('input', { type: 'search', placeholder: 'Cari no. pesanan / nama / HP…', value: oQ, 'aria-label': 'Cari pesanan' }); q.oninput = () => { oQ = q.value.toLowerCase().trim(); const pos = q.selectionStart; ordersV(m2()); const n = $('#main input[type=search]'); n && (n.focus(), n.setSelectionRange(pos, pos)) };
+    const q = h('input', { type: 'search', placeholder: 'Cari no. pesanan / nama / HP…', value: oQ, 'aria-label': 'Cari pesanan' }); q.oninput = () => { oQ = q.value.toLowerCase().trim(); oLimit = 40; const pos = q.selectionStart; ordersV(m2()); const n = $('#main input[type=search]'); n && (n.focus(), n.setSelectionRange(pos, pos)) };
     const m2 = () => { main.replaceChildren(); return main };
-    m.append(h('div', { class: 'tb' }, h('div', { class: 'fl' }, fl.map(s => h('button', { class: 'chip sm' + (s === oFilter ? ' on' : ''), onclick: () => { oFilter = s; render() } }, s + (s === 'Semua' ? ' (' + all.length + ')' : ' (' + all.filter(o => o.status === s).length + ')')))), q));
+    m.append(h('div', { class: 'tb' }, h('div', { class: 'fl' }, fl.map(s => h('button', { class: 'chip sm' + (s === oFilter ? ' on' : ''), onclick: () => { oFilter = s; oLimit = 40; render() } }, s + (s === 'Semua' ? ' (' + all.length + ')' : ' (' + all.filter(o => o.status === s).length + ')')))), q));
     m.append(panel('', list.length ? ordTable(list) : empty(all.length ? 'Tidak ada pesanan yang cocok.' : 'Belum ada pesanan.')));
   }
   function orderD(id) {
@@ -277,6 +280,8 @@
   /* ---------- BACKUP ---------- */
   function backupV(m) {
     simPanel(m);
+    const lc = +ls.get(K + 'lastCheck'), upBtn = h('button', { class: 'btn gold', onclick: async () => { upBtn.disabled = true; upBtn.textContent = 'Memeriksa…'; await mbUA.check(true); upBtn.disabled = false; upBtn.textContent = 'Periksa Pembaruan'; render() } }, 'Periksa Pembaruan');
+    m.append(panel('Aplikasi, Offline & Pembaruan', h('p', { class: 'mu' }, 'Versi aplikasi ', h('b', {}, 'v' + APP_VER), ' · Status: ', h('b', {}, navigator.onLine ? 'Online' : 'Offline'), '. Halaman toko & admin beserta foto tersimpan di perangkat sehingga bisa dibuka tanpa internet. Saat internet tersambung, aplikasi memeriksa versi terbaru otomatis (tiap 10 menit, saat tersambung kembali, dan saat dibuka) lalu memuat ulang sendiri. Terakhir diperiksa: ' + (lc ? fmt(lc) : 'belum'), '. Catatan: kirim WhatsApp & Google Maps tetap membutuhkan internet.'), h('div', { class: 'row' }, upBtn)));
     const used = (() => { let n = 0; try { for (const k of Object.keys(localStorage)) if (k.startsWith(K)) n += (localStorage[k].length + k.length) * 2 } catch (e) { } return n })();
     m.append(panel('Backup & Pemulihan', h('p', { class: 'mu' }, 'Semua data (menu, pesanan, inbox, pengaturan) hanya ada di browser ini. Lakukan backup rutin. Pemakaian penyimpanan: ' + (used / 1024).toFixed(1) + ' KB dari ± 5.000 KB.'),
       h('div', { class: 'row' }, h('button', { class: 'btn red', onclick: () => { const d = { app: 'martabak-masbejo', schema: SCHEMA, exported: new Date().toISOString() }; ['products', 'settings', 'orders', 'messages'].forEach(n => d[n] = Repo.get(n)); download(`backup-masbejo-${today()}.json`, JSON.stringify(d, null, 1), 'application/json'); toast('Backup diunduh') } }, '⇩ Unduh Backup Lengkap')),
@@ -285,7 +290,7 @@
       h('div', { class: 'row' }, h('button', { class: 'btn gold', onclick: () => { const ps = prods().map(p => ({ ...p, img: p.img && p.img.startsWith('data:') ? '' : p.img })), s = { ...sett() }; ['qris', 'heroImg'].forEach(k => { if (s[k] && s[k].startsWith('data:')) s[k] = DEF.settings[k] }); const skipped = prods().filter(p => p.img && p.img.startsWith('data:')).length; download('config.json', JSON.stringify({ products: ps, settings: s }, null, 1), 'application/json'); toast('config.json diunduh' + (skipped ? ` (${skipped} foto unggahan tidak disertakan)` : '')) } }, '⇩ Unduh config.json'),
         h('button', { class: 'chip', onclick: () => confirmD('Pakai config.json publik?', 'Edit menu & pengaturan di browser ini dihapus, lalu website memakai config.json di repo (atau default bawaan). Pesanan & inbox tidak disentuh.', 'Ya, Lanjutkan', () => { ls.del(K + 'products'); ls.del(K + 'settings'); toast('Edit lokal dihapus'); render() }, false) }, 'Buang edit lokal (pakai config.json)'))));
     m.append(panel('Zona Bahaya', h('p', { class: 'mu' }, 'Hapus semua data aplikasi di browser ini (menu, pesanan, inbox, pengaturan, keranjang). Unduh backup dulu.'),
-      h('button', { class: 'btn dng', onclick: () => { const i = h('input', { placeholder: 'Ketik HAPUS' }); modal('Hapus semua data?', h('p', {}, 'Tindakan ini tidak bisa dibatalkan. Ketik ', h('b', {}, 'HAPUS'), ' untuk melanjutkan.'), i, h('div', { class: 'row end' }, h('button', { class: 'chip', onclick: () => dlg.close() }, 'Batal'), h('button', { class: 'btn dng', onclick: () => { if (i.value.trim() !== 'HAPUS') return toast('Ketik HAPUS dengan benar', 1); Repo.reset(); dlg.close(); toast('Semua data dihapus'); render() } }, 'Hapus Semua'))) } }, 'Hapus Semua Data')));
+      h('button', { class: 'btn dng', onclick: () => { const i = h('input', { placeholder: 'Ketik HAPUS' }); modal('Hapus semua data?', h('p', {}, 'Tindakan ini tidak bisa dibatalkan. Ketik ', h('b', {}, 'HAPUS'), ' untuk melanjutkan.'), i, h('div', { class: 'row end' }, h('button', { class: 'chip', onclick: () => dlg.close() }, 'Batal'), h('button', { class: 'btn dng', onclick: () => { if (i.value.trim() !== 'HAPUS') return toast('Ketik HAPUS dengan benar', 1); Repo.reset(); stopLive(true); ls.set(K + 'simOff', '1'); dlg.close(); toast('Semua data dihapus'); render() } }, 'Hapus Semua'))) } }, 'Hapus Semua Data')));
   }
   function restore(file) {
     if (!file) return; const fr = new FileReader();
@@ -297,63 +302,100 @@
     fr.readAsText(file);
   }
 
-  /* ---------- SIMULASI (data uji, ditandai sim:true & bisa dihapus) ---------- */
+  /* ---------- SIMULASI (data uji, ditandai sim:true & bisa dihapus) ----------
+     AUTO_SIM = true  -> saat admin dibuka & belum ada pesanan/pesan, data simulasi
+                         30 hari terisi otomatis (kecuali pernah dihapus manual).
+     UBAH KE false SEBELUM WEBSITE DIPAKAI SUNGGUHAN. */
+  const AUTO_SIM = true, SIM_DAYS = 30, LIVE_MS = 4000;
   const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1)), pick = a => a[rnd(0, a.length - 1)];
-  const NAMES = ['Budi Santoso', 'Siti Aminah', 'Rina Wijaya', 'Agus Pratama', 'Dewi Lestari', 'Fajar Nugroho', 'Maya Putri', 'Dimas Saputra', 'Intan Permata', 'Rizky Ramadhan', 'Ayu Ningsih', 'Hendra Kusuma', 'Lina Marlina', 'Yoga Prasetyo', 'Nadia Safitri', 'Bayu Aji', 'Citra Dewi', 'Eko Prabowo', 'Wulan Sari', 'Tono Hartono', 'Putri Anggraini', 'Joko Susilo'];
-  const NOTES = ['', '', '', 'Tolong dipotong 8', 'Jangan terlalu manis', 'Extra keju ya', 'Bungkus rapi, buat hadiah', 'Telur bebek kalau ada', 'Tanpa cabai', 'Ambil jam 8 malam', 'Pedas level 2', 'Pakai toping tambahan'];
-  const ADDR = ['Jl. Melati No. 12, RT 03/05', 'Perum Griya Asri Blok C4', 'Jl. Kenanga 7 (depan masjid)', 'Kos Putra Mawar, Jl. Anggrek 21', 'Jl. Pahlawan No. 88'];
-  const MSGS = ['Kak, hari ini buka sampai jam berapa?', 'Bisa pesan 10 box untuk acara besok sore?', 'Ada promo untuk pembelian banyak?', 'Martabak telur spesial masih ada kak?', 'Bisa delivery ke perumahan Griya Asri?', 'Terima kasih, martabaknya enak banget!', 'Apakah bisa request topping oreo + keju?', 'Pesanan saya sudah sampai mana ya?', 'Bisa bayar pakai QRIS saat ambil?', 'Ada menu tanpa telur?'];
-  const iso = (day, h, mi) => new Date(`${day}T${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}:00+07:00`).toISOString();
-  const phone = () => '08' + pick(['12', '13', '21', '52', '57', '78', '81', '95']) + String(rnd(1e6, 9999999));
-  function mkOrder(time, status, seq, day) {
-    const act = prods().filter(p => p.on && p.stock), n = rnd(1, 3), its = []; for (let i = 0; i < n; i++) { const p = pick(act); if (!its.some(x => x.id === p.id)) its.push({ id: p.id, name: p.name, qty: rnd(1, 3), price: price(p) }) }
-    const total = its.reduce((a, i) => a + i.price * i.qty, 0), qris = Math.random() < .55, dl = Math.random() < .28, d = day.replace(/-/g, '');
+  const wpick = l => { let t = l.reduce((a, x) => a + x[1], 0), r = Math.random() * t; for (const x of l) { if ((r -= x[1]) < 0) return x[0] } return l[l.length - 1][0] };
+  const NAMES = ['Budi Santoso', 'Siti Aminah', 'Rina Wijaya', 'Agus Pratama', 'Dewi Lestari', 'Fajar Nugroho', 'Maya Putri', 'Dimas Saputra', 'Intan Permata', 'Rizky Ramadhan', 'Ayu Ningsih', 'Hendra Kusuma', 'Lina Marlina', 'Yoga Prasetyo', 'Nadia Safitri', 'Bayu Aji', 'Citra Dewi', 'Eko Prabowo', 'Wulan Sari', 'Tono Hartono', 'Putri Anggraini', 'Joko Susilo', 'Rani Oktaviani', 'Galih Permadi', 'Sari Handayani', 'Ilham Maulana', 'Tiara Kusuma', 'Reza Firmansyah', 'Anita Rahmawati', 'Doni Setiawan', 'Mega Puspita', 'Arif Hidayat', 'Fitri Handayani', 'Bagas Wicaksono', 'Selly Marcellina', 'Rudi Hermawan', 'Nur Aini', 'Teguh Santosa', 'Vina Melati', 'Wahyu Nugraha'];
+  /* pelanggan tetap (nama + HP konsisten) agar rekap Pelanggan menunjukkan pembeli berulang */
+  const PHONES = (() => { let s = 20261107; const r = () => (s = (s * 16807) % 2147483647), pre = ['12', '13', '21', '52', '57', '78', '81', '95']; return NAMES.map((_, i) => '08' + pre[i % 8] + String(1e6 + r() % 9e6)) })();
+  const cust = () => { const i = Math.random() < .6 ? rnd(0, 11) : rnd(0, NAMES.length - 1); return { name: NAMES[i], phone: PHONES[i] } };
+  const NOTES = ['', '', '', '', 'Tolong dipotong 8', 'Jangan terlalu manis', 'Extra keju ya', 'Bungkus rapi, buat hadiah', 'Telur bebek kalau ada', 'Tanpa cabai', 'Ambil jam 8 malam', 'Pedas level 2', 'Pakai toping tambahan', 'Mohon cepat ya, buat acara'];
+  const ADDR = ['Jl. Melati No. 12, RT 03/05', 'Perum Griya Asri Blok C4', 'Jl. Kenanga 7 (depan masjid)', 'Kos Putra Mawar, Jl. Anggrek 21', 'Jl. Pahlawan No. 88', 'Apartemen Sakura Tower B lt. 5', 'Jl. Dahlia Raya No. 3'];
+  const MSGS = ['Kak, hari ini buka sampai jam berapa?', 'Bisa pesan 10 box untuk acara besok sore?', 'Ada promo untuk pembelian banyak?', 'Martabak telur spesial masih ada kak?', 'Bisa delivery ke perumahan Griya Asri?', 'Terima kasih, martabaknya enak banget!', 'Apakah bisa request topping oreo + keju?', 'Pesanan saya sudah sampai mana ya?', 'Bisa bayar pakai QRIS saat ambil?', 'Ada menu tanpa telur?', 'Kak, rasa pandan keju kapan tersedia?', 'Bisa pesan untuk besok pagi jam 9?', 'Pesanan kemarin kurang satu, mohon dicek', 'Ada paket hemat untuk 3 loyang?', 'Lokasinya di sebelah mana pujasera ya?', 'Mantap rasanya, langganan terus!'];
+  const HW = [[17, 5], [18, 10], [19, 14], [20, 14], [21, 12], [22, 8], [23, 4]];
+  const iso = (day, hh, mi) => new Date(`${day}T${String(hh).padStart(2, '0')}:${String(mi).padStart(2, '0')}:00+07:00`).toISOString();
+  const seqOf = (os, d) => os.filter(x => (x.no || '').includes(d)).reduce((m, x) => Math.max(m, +(x.no.split('-')[2]) || 0), 0);
+  const FLOW = ['Baru', 'Dikonfirmasi', 'Diproses', 'Siap Diambil', 'Selesai'];
+  function mkOrder(time, status, no) {
+    const act = prods().filter(p => p.on && p.stock); if (!act.length) return null;
+    const n = wpick([[1, 50], [2, 35], [3, 15]]), its = [];
+    for (let i = 0; i < n; i++) { const p = wpick(act.map(x => [x, 1 + (x.best ? 2 : 0)])); if (!its.some(x => x.id === p.id)) its.push({ id: p.id, name: p.name, qty: wpick([[1, 60], [2, 30], [3, 10]]), price: price(p) }) }
+    const total = its.reduce((a, i) => a + i.price * i.qty, 0), qris = Math.random() < .55, dl = Math.random() < .28, c = cust();
     const pst = status === 'Selesai' ? 'Lunas' : status === 'Dibatalkan' ? (qris ? 'Menunggu Pembayaran' : 'Belum Dibayar') : (qris ? (status === 'Baru' ? 'Menunggu Pembayaran' : 'Lunas') : 'Belum Dibayar');
-    const o = { id: 'sim' + uid() + seq, no: `MB-${d}-${String(900 + seq).padStart(3, '0')}`, time, name: pick(NAMES), phone: phone(), items: its, total, pay: qris ? 'QRIS' : 'Tunai', payStatus: pst, status, note: pick(NOTES), method: dl ? 'Delivery' : 'Ambil', address: dl ? pick(ADDR) : '', demo: true, sim: true };
-    const flow = ['Baru', 'Dikonfirmasi', 'Diproses', 'Siap Diambil', 'Selesai'], t0 = new Date(time).getTime(), end = Math.min(Date.now(), t0 + 25 * 6e4);
+    const o = { id: 'sim' + uid() + no.slice(-4), no, time, name: c.name, phone: c.phone, items: its, total, pay: qris ? 'QRIS' : 'Tunai', payStatus: pst, status, note: pick(NOTES), method: dl ? 'Delivery' : 'Ambil', address: dl ? pick(ADDR) : '', demo: true, sim: true };
+    const t0 = new Date(time).getTime(), end = Math.min(Date.now(), t0 + 25 * 6e4);
     if (status === 'Dibatalkan') o.hist = [{ t: time, s: 'Baru' }, { t: new Date(Math.min(Date.now(), t0 + 6e5)).toISOString(), s: 'Dibatalkan' }];
-    else { const k = flow.indexOf(status); o.hist = flow.slice(0, k + 1).map((s, i) => ({ t: new Date(t0 + (end - t0) * i / Math.max(1, k)).toISOString(), s })) }
+    else { const k = FLOW.indexOf(status); o.hist = FLOW.slice(0, k + 1).map((s, i) => ({ t: new Date(t0 + (end - t0) * i / Math.max(1, k)).toISOString(), s })) }
     return o;
   }
   function genSim() {
-    const days = lastDays(14), td = today(), nowH = +new Date().toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Asia/Jakarta' }) % 24, out = [], mm = []; let seq = 0;
-    days.forEach(day => {
-      const isT = day === td, wk = [0, 6].includes(new Date(day + 'T12:00:00+07:00').getDay()), cnt = isT ? 14 : wk ? rnd(26, 34) : rnd(16, 26), tl = [];
-      for (let i = 0; i < cnt; i++) { let t; if (isT) { const mx = Date.now() - 3e5, mn = Math.max(new Date(day + 'T00:00:00+07:00').getTime(), mx - 6 * 36e5); t = new Date(mn + Math.random() * Math.max(1, mx - mn)).toISOString() } else { const hh = pick([17, 18, 18, 19, 19, 19, 20, 20, 21, 21, 22, 23]); t = iso(day, hh, rnd(0, 59)) } tl.push(t) }
-      tl.sort();
-      tl.forEach((t, i) => { let st = 'Selesai'; if (isT) { const left = tl.length - 1 - i; st = left < 4 ? 'Baru' : left < 6 ? 'Dikonfirmasi' : left < 8 ? 'Diproses' : left < 9 ? 'Siap Diambil' : (Math.random() < .08 ? 'Dibatalkan' : 'Selesai') } else if (Math.random() < .07) st = 'Dibatalkan'; out.push(mkOrder(t, st, ++seq, day)) });
+    const days = lastDays(SIM_DAYS), td = today(), now = Date.now(), existing = orders(), out = [], mm = [];
+    days.forEach((day, di) => {
+      const isT = day === td, dow = new Date(day + 'T12:00:00+07:00').getDay(), wk = dow === 0 || dow === 6, grow = .85 + .15 * di / Math.max(1, days.length - 1);
+      const cnt = isT ? 28 : Math.round((wk ? rnd(52, 68) : rnd(32, 50)) * grow), tl = [], d = day.replace(/-/g, '');
+      for (let i = 0; i < cnt; i++) {
+        if (isT) { const mx = now - 18e4, mn = Math.max(new Date(day + 'T00:00:00+07:00').getTime(), mx - 7 * 36e5); tl.push(new Date(mn + Math.random() * Math.max(1, mx - mn)).toISOString()) }
+        else tl.push(iso(day, wpick(HW), rnd(0, 59)));
+      }
+      tl.sort(); let seq = seqOf(existing, d);
+      tl.forEach((t, i) => {
+        let st = 'Selesai';
+        if (isT) { const left = tl.length - 1 - i; st = left < 6 ? 'Baru' : left < 9 ? 'Dikonfirmasi' : left < 12 ? 'Diproses' : left < 14 ? 'Siap Diambil' : (Math.random() < .08 ? 'Dibatalkan' : 'Selesai') }
+        else if (Math.random() < .07) st = 'Dibatalkan';
+        const o = mkOrder(t, st, `MB-${d}-${String(++seq).padStart(3, '0')}`); if (o) out.push(o);
+      });
     });
-    const v = out.find(o => o.status === 'Dikonfirmasi' && o.pay === 'QRIS') || out.find(o => o.status === 'Dikonfirmasi'); if (v) { v.pay = 'QRIS'; v.payStatus = 'Menunggu Verifikasi' }
-    for (let i = 0; i < 9; i++) { const nm = pick(NAMES), t = i < 3 ? new Date(Date.now() - rnd(2, 90) * 6e4).toISOString() : new Date(Date.now() - rnd(3, 120) * 36e5).toISOString(); mm.push({ id: 'sim' + uid() + i, name: nm, phone: phone(), text: MSGS[i % MSGS.length], time: t, status: i < 4 ? 'Baru' : 'Dibaca', sim: true }) }
+    const v = out.filter(o => o.status === 'Dikonfirmasi' && o.pay === 'QRIS').slice(0, 2); v.forEach(o => { o.payStatus = 'Menunggu Verifikasi' });
+    for (let i = 0; i < 18; i++) { const c = cust(), t = i < 4 ? new Date(now - rnd(2, 120) * 6e4).toISOString() : new Date(now - rnd(3, SIM_DAYS * 24) * 36e5).toISOString(); mm.push({ id: 'sim' + uid() + i, name: c.name, phone: c.phone, text: MSGS[i % MSGS.length], time: t, status: i < 5 ? 'Baru' : 'Dibaca', sim: true }) }
     return { out, mm };
   }
   const simCount = () => ({ o: orders().filter(o => o.sim).length, m: msgs().filter(x => x.sim).length });
-  function addSim() { const { out, mm } = genSim(), o = orders(), m = msgs(); if (Repo.save('orders', o.concat(out)) && Repo.save('messages', m.concat(mm))) { toast(`Simulasi dibuat: ${out.length} pesanan, ${mm.length} pesan`); render() } }
-  function clearSim() { stopLive(); const ok = Repo.save('orders', orders().filter(o => !o.sim)) && Repo.save('messages', msgs().filter(x => !x.sim)); if (ok) { toast('Data simulasi dihapus. Data asli tidak tersentuh.'); render() } }
+  function addSim() { const { out, mm } = genSim(); if (!out.length) return toast('Tidak ada menu aktif/tersedia untuk dibuat pesanannya', 1); ls.del(K + 'simOff'); if (Repo.save('orders', orders().concat(out)) && Repo.save('messages', msgs().concat(mm))) { toast(`Simulasi dibuat: ${out.length} pesanan, ${mm.length} pesan`); render(); if (ls.get(K + 'simLive') !== '0') startLive(true) } }
+  function clearSim() { stopLive(true); ls.set(K + 'simOff', '1'); const ok = Repo.save('orders', orders().filter(o => !o.sim)) && Repo.save('messages', msgs().filter(x => !x.sim)); if (ok) { toast('Data simulasi dihapus. Data asli tidak tersentuh.'); render() } }
+  /* isi otomatis sekali: hanya bila belum ada data apa pun & belum pernah dihapus manual */
+  function autoSim() { if (!AUTO_SIM || ls.get(K + 'simOff') === '1' || orders().length || msgs().length) return; const { out, mm } = genSim(); if (out.length) { Repo.save('orders', out); Repo.save('messages', mm) } }
   let liveT = null;
-  function beep() { try { const a = new (window.AudioContext || window.webkitAudioContext)(), o = a.createOscillator(), g = a.createGain(); o.connect(g); g.connect(a.destination); o.frequency.value = 880; g.gain.setValueAtTime(.08, a.currentTime); g.gain.exponentialRampToValueAtTime(.001, a.currentTime + .25); o.start(); o.stop(a.currentTime + .25) } catch (e) { } }
-  function tick() {
-    const r = Math.random(), l = orders();
-    if (r < .5) { const o = mkOrder(new Date().toISOString(), 'Baru', rnd(100, 899), today()); o.hist = [{ t: o.time, s: 'Baru' }]; l.push(o); Repo.save('orders', l); toast('🛒 Pesanan baru ' + o.no + ' · ' + o.name + ' · ' + rp(o.total)) }
-    else if (r < .75) { const m = msgs(); m.push({ id: 'sim' + uid(), name: pick(NAMES), phone: phone(), text: pick(MSGS), time: new Date().toISOString(), status: 'Baru', sim: true }); Repo.save('messages', m); toast('✉️ Pesan baru masuk') }
-    else { const c = l.filter(o => o.sim && o.status === 'Baru' && o.pay === 'QRIS' && o.payStatus === 'Menunggu Pembayaran'); if (c.length) { const o = pick(c); o.payStatus = 'Menunggu Verifikasi'; Repo.save('orders', l); toast('💳 ' + o.name + ' mengirim bukti bayar (' + o.no + ')') } else { const m = msgs(); m.push({ id: 'sim' + uid(), name: pick(NAMES), phone: phone(), text: pick(MSGS), time: new Date().toISOString(), status: 'Baru', sim: true }); Repo.save('messages', m); toast('✉️ Pesan baru masuk') } }
-    beep(); if (!dlg.open && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) render(); else drawTabs();
+  function beep() { if (ls.get(K + 'simSound') !== '1') return; try { const a = new (window.AudioContext || window.webkitAudioContext)(), o = a.createOscillator(), g = a.createGain(); o.connect(g); g.connect(a.destination); o.frequency.value = 880; g.gain.setValueAtTime(.08, a.currentTime); g.gain.exponentialRampToValueAtTime(.001, a.currentTime + .25); o.start(); o.stop(a.currentTime + .25) } catch (e) { } }
+  function proof(l) { const c = l.filter(o => o.sim && o.status === 'Baru' && o.pay === 'QRIS' && o.payStatus === 'Menunggu Pembayaran'); if (!c.length) return null; const o = pick(c); o.payStatus = 'Menunggu Verifikasi'; return '💳 ' + o.name + ' mengirim bukti bayar (' + o.no + ')' }
+  function advance(l) {
+    const c = l.filter(o => o.sim && NEXT[o.status]); if (!c.length) return null; const o = pick(c);
+    if (o.status === 'Baru' && o.pay === 'QRIS' && o.payStatus === 'Menunggu Pembayaran') return proof([o]);
+    const nx = NEXT[o.status][0]; o.status = nx; (o.hist = o.hist || [{ t: o.time, s: 'Baru' }]).push({ t: new Date().toISOString(), s: nx });
+    if (nx === 'Selesai' || (o.pay === 'QRIS' && o.payStatus !== 'Lunas')) o.payStatus = 'Lunas';
+    return '🔄 ' + o.no + ' → ' + nx;
   }
-  function startLive() { if (liveT) return; live = true; liveT = setInterval(tick, 8000); tick(); drawTabs(); toast('Simulator live aktif: aktivitas baru tiap ±8 detik') }
-  function stopLive() { clearInterval(liveT); liveT = null; live = false; drawTabs() }
+  function tick() {
+    const r = Math.random(), l = orders(); let t = null, saveO = true;
+    if (r < .4 && l.length < 4000) { const d = today().replace(/-/g, ''), o = mkOrder(new Date().toISOString(), 'Baru', `MB-${d}-${String(seqOf(l, d) + 1).padStart(3, '0')}`); if (o) { o.hist = [{ t: o.time, s: 'Baru' }]; l.push(o); t = '🛒 Pesanan baru ' + o.no + ' · ' + o.name + ' · ' + rp(o.total) } }
+    else if (r < .75) t = advance(l);
+    else if (r < .88) t = proof(l);
+    if (!t && r >= .4) { const m = msgs(), c = cust(); m.push({ id: 'sim' + uid(), name: c.name, phone: c.phone, text: pick(MSGS), time: new Date().toISOString(), status: 'Baru', sim: true }); Repo.save('messages', m); saveO = false; t = '✉️ Pesan baru masuk' }
+    if (t && saveO && !Repo.save('orders', l)) { stopLive(); return }
+    if (!t) return;
+    toast(t); beep();
+    if (!dlg.open && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) && ['dash', 'orders', 'inbox'].includes(tab)) { const y = scrollY; render(); scrollTo(0, y) } else drawTabs();
+  }
+  function startLive(quiet) { if (liveT) return; live = true; liveT = setInterval(tick, LIVE_MS); ls.set(K + 'simLive', '1'); drawTabs(); if (!quiet) { tick(); toast('Simulator live aktif: aktivitas baru tiap ±4 detik') } }
+  function stopLive(auto) { clearInterval(liveT); liveT = null; live = false; if (!auto) ls.set(K + 'simLive', '0'); drawTabs() }
   function simPanel(m) {
-    const c = simCount();
-    m.append(panel('🧪 Simulasi & Data Uji', h('p', { class: 'mu' }, 'Isi website dengan data contoh seolah sudah berjalan: pesanan 14 hari terakhir (minggu ini + minggu lalu sebagai pembanding; berbagai status & pembayaran), pesan masuk, dan notifikasi. Semua data uji bertanda SIM dan bisa dihapus tanpa menyentuh data asli. Data tersimpan hanya di browser ini.'),
+    const c = simCount(), snd = h('input', { type: 'checkbox' }); snd.checked = ls.get(K + 'simSound') === '1'; snd.onchange = () => ls.set(K + 'simSound', snd.checked ? '1' : '0');
+    m.append(panel('🧪 Simulasi & Data Uji', h('p', { class: 'mu' }, `Mengisi website dengan data contoh seolah sudah ramai: pesanan ${SIM_DAYS} hari terakhir (±1.300 pesanan, akhir pekan lebih ramai, pelanggan langganan, status & pembayaran beragam), pesan masuk, pelanggan, laporan, dan notifikasi. Terisi otomatis saat admin pertama dibuka. Semua data uji bertanda SIM dan bisa dihapus tanpa menyentuh data asli. Data tersimpan hanya di browser ini.`),
       h('p', {}, 'Saat ini: ', h('b', {}, c.o + ' pesanan simulasi'), ' dan ', h('b', {}, c.m + ' pesan simulasi'), '.'),
       h('div', { class: 'row' }, h('button', { class: 'btn red', onclick: () => c.o ? confirmD('Tambah simulasi lagi?', 'Data simulasi yang ada akan ditambah satu set baru. Hapus dulu bila ingin mulai bersih.', 'Tambah', addSim, false) : addSim() }, '▶ Buat Data Simulasi'),
         h('button', { class: 'btn ' + (live ? 'gold' : 'green'), onclick: () => { live ? stopLive() : startLive(); render() } }, live ? '■ Hentikan Simulator Live' : '⚡ Mulai Simulator Live'),
-        h('button', { class: 'btn dng', disabled: c.o + c.m ? null : '', onclick: () => confirmD('Hapus semua data simulasi?', 'Hanya data bertanda SIM yang dihapus. Pesanan & pesan asli tetap aman.', 'Hapus Simulasi', clearSim) }, 'Hapus Data Simulasi')),
-      h('small', { class: 'mu' }, 'Simulator live menambah pesanan/pesan/bukti bayar baru tiap ±8 detik selama halaman admin terbuka, lengkap dengan notifikasi dan bunyi.')));
+        h('button', { class: 'btn dng', disabled: c.o + c.m ? null : '', onclick: () => confirmD('Hapus semua data simulasi?', 'Hanya data bertanda SIM yang dihapus. Pesanan & pesan asli tetap aman. Data tidak akan diisi otomatis lagi sampai Anda menekan Buat Data Simulasi.', 'Hapus Simulasi', clearSim) }, 'Hapus Data Simulasi')),
+      h('label', { class: 'ck' }, snd, h('span', {}, 'Bunyi notifikasi saat simulator live')),
+      h('small', { class: 'mu' }, 'Simulator live (aktif otomatis bila ada data simulasi) menambah pesanan baru, memajukan status pesanan, bukti bayar, dan pesan tiap ±4 detik selama halaman admin terbuka.')));
   }
 
   /* ---------- Mulai ---------- */
   function start() {
-    $('#login').hidden = true; $('#app').hidden = false; const k = location.hash.slice(1); tab = TABS.some(t => t[0] === k) ? k : 'dash'; render();
+    $('#login').hidden = true; $('#app').hidden = false; autoSim(); const k = location.hash.slice(1); tab = TABS.some(t => t[0] === k) ? k : 'dash'; render();
+    if (simCount().o && ls.get(K + 'simLive') !== '0') startLive(true);
   }
   addEventListener('hashchange', () => { const k = location.hash.slice(1); if (!$('#app').hidden && TABS.some(t => t[0] === k) && k !== tab) { tab = k; render() } });
   window.mbReady.then(() => { if (authed()) start(); else $('#login').hidden = false });
